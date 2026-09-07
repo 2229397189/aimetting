@@ -1,0 +1,125 @@
+spring:
+  profiles:
+    # 默认使用 MySQL（架构文档 0 章硬约束）；零中间件场景可切 --spring.profiles.active=h2
+    active: mysql
+  application:
+    name: ai-interview-server
+  jackson:
+    time-zone: Asia/Shanghai
+    date-format: yyyy-MM-dd HH:mm:ss
+    # 保持 always：统一返回体 4 个字段始终出现，便于前端与脚本断言
+    default-property-inclusion: always
+    serialization:
+      write-dates-as-timestamps: false
+      fail-on-empty-beans: false
+    deserialization:
+      fail-on-unknown-properties: false
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 5MB
+  mvc:
+    throw-exception-if-no-handler-found: true
+  web:
+    resources:
+      add-mappings: false
+
+server:
+  port: 8080
+  servlet:
+    context-path: /
+  error:
+    include-message: always
+
+# ==================== 业务自定义配置 ====================
+ai-interview:
+  # ---------------- JWT ----------------
+  jwt:
+    # HS256 要求密钥长度 >= 32 字节，此处 64 字符
+    secret: ai-meeting-interview-platform-default-jwt-secret-key-please-change-me-2024
+    access-expire-seconds: 7200
+    refresh-expire-seconds: 604800
+    issuer: ai-interview-server
+  # ---------------- 安全 ----------------
+  security:
+    permit-paths:
+      - /api/health
+      - /api/config/client
+      - /api/auth/register
+      - /api/auth/login
+      - /api/auth/token/refresh
+      - /api/questions/directions
+      - /v3/api-docs
+      - /v3/api-docs/**
+      - /swagger-ui.html
+      - /swagger-ui/**
+      - /swagger-resources/**
+      - /webjars/**
+      - /doc.html
+      - /favicon.ico
+      - /error
+  # ---------------- AI ----------------
+  ai:
+    provider: deepseek
+    base-url: https://api.deepseek.com
+    api-key: sk-1c8950200dee48a7ae66910d52b808c0
+    model: deepseek-v4-flash
+    report-model: deepseek-chat
+    connect-timeout-seconds: 10
+    write-timeout-seconds: 30
+    question-timeout-seconds: 60
+    evaluate-timeout-seconds: 90
+    follow-up-timeout-seconds: 90
+    resume-timeout-seconds: 90
+    report-timeout-seconds: 120
+    max-retries: 2
+    retry-base-delay-millis: 500
+    bulkhead-concurrency: 20
+    singleflight-wait-timeout-seconds: 120
+    circuit-breaker-window-size: 20
+    circuit-breaker-failure-rate: 0.5
+    circuit-breaker-open-seconds: 30
+    temperature: 0.7
+    max-tokens: 2048
+  # ---------------- 面试 ----------------
+  interview:
+    max-follow-up: 2
+    default-question-count: 8
+    min-question-count: 3
+    max-question-count: 15
+    answer-min-length: 10
+    answer-max-length: 5000
+    idle-timeout-minutes: 30
+    paused-abort-days: 7
+    resume-max-size-mb: 5
+
+# ==================== MyBatis-Plus ====================
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
+    jdbc-type-for-null: 'null'
+  global-config:
+    banner: false
+    db-config:
+      id-type: auto
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+      insert-strategy: not_null
+      update-strategy: not_null
+
+# ==================== OpenAPI ====================
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operationsSorter: method
+
+# ==================== 日志 ====================
+logging:
+  level:
+    root: INFO
+    com.aimeeting.interview: INFO
+    com.aimeeting.interview.ai: DEBUG

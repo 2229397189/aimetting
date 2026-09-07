@@ -1,0 +1,25 @@
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://127.0.0.1:3306/ai_interview?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    username: root
+    password: 123456
+    hikari:
+      pool-name: AiInterviewHikariCP
+      minimum-idle: 5
+      maximum-pool-size: 20
+      idle-timeout: 600000
+      connection-timeout: 30000
+      max-lifetime: 1800000
+      validation-timeout: 5000
+      connection-test-query: SELECT 1
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:db/schema-mysql.sql
+      separator: ;
+      continue-on-error: false
+
+mybatis-plus:
+  configuration:
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
