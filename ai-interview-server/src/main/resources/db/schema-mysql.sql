@@ -47,14 +47,32 @@ CREATE TABLE IF NOT EXISTS t_user_profile (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户资料';
 
 
+-- 3. 题库表（M2）
+CREATE TABLE IF NOT EXISTS t_question (
+  id              BIGINT       NOT NULL AUTO_INCREMENT,
+  direction       VARCHAR(32)  NOT NULL COMMENT '方向枚举名',
+  difficulty      VARCHAR(16)  NOT NULL COMMENT 'EASY|MEDIUM|HARD',
+  title           VARCHAR(500) NOT NULL COMMENT '题面',
+  reference_points TEXT         DEFAULT NULL COMMENT '考察要点(JSON 数组)',
+  tags            TEXT         DEFAULT NULL COMMENT '标签(JSON 数组)',
+  analysis        TEXT         DEFAULT NULL COMMENT '参考答案/解析',
+  source          VARCHAR(16)  NOT NULL DEFAULT 'SEED' COMMENT 'AI|BANK|SEED|ADMIN',
+  status          TINYINT      NOT NULL DEFAULT 1 COMMENT '1启用 0停用',
+  created_by      BIGINT       DEFAULT NULL COMMENT '录入人',
+  create_time     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  update_time     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  deleted         TINYINT(1)   NOT NULL DEFAULT 0,
+  PRIMARY KEY (id),
+  KEY idx_direction_difficulty (direction, difficulty),
+  KEY idx_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='题库';
+
 -- ============================================================================
--- 以下为后续模块建表占位（由 M2~M8 补充，此处仅留位置说明，不创建）
---   M2/M3  题库：       t_question
+-- 以下为后续模块建表占位（由 M3~M8 补充）
 --   M4     面试会话：   t_interview_session / t_session_question
 --   M5     答题与幂等： t_session_answer / t_idempotent_record
---   M5     AI 日志：    t_ai_call_log
+--   M3     AI 日志：    t_ai_call_log
 --   M4     状态流水：   t_session_event
---   M6     简历：       t_resume
---   M7     报告：       t_interview_report
---   公共   字典：       t_dict
+--   M5     简历：       t_resume
+--   M6     报告：       t_interview_report
 -- ============================================================================

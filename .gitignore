@@ -41,3 +41,10 @@ application-local.yml
 .warm/
 *.tmp
 uploads/
+ai-interview-server/data/
+*.mv.db
+*.trace.db
+ai-interview-server/*.log
+
+# ===== WorkBuddy 内部数据（非项目产物） =====
+.workbuddy/

@@ -46,14 +46,30 @@ CREATE TABLE IF NOT EXISTS t_user_profile (
 );
 
 
+-- 3. 题库表（M2）
+CREATE TABLE IF NOT EXISTS t_question (
+  id              BIGINT AUTO_INCREMENT PRIMARY KEY,
+  direction       VARCHAR(32)  NOT NULL,
+  difficulty      VARCHAR(16)  NOT NULL,
+  title           VARCHAR(500) NOT NULL,
+  reference_points VARCHAR(2000) DEFAULT NULL,
+  tags            VARCHAR(1000) DEFAULT NULL,
+  analysis        VARCHAR(4000) DEFAULT NULL,
+  source          VARCHAR(16)  NOT NULL DEFAULT 'SEED',
+  status          INT          NOT NULL DEFAULT 1,
+  created_by      BIGINT       DEFAULT NULL,
+  create_time     TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
+  update_time     TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
+  deleted         INT          NOT NULL DEFAULT 0
+);
+
+
 -- ============================================================================
--- 以下为后续模块建表占位（由 M2~M8 补充，此处仅留位置说明，不创建）
---   M2/M3  题库：       t_question
+-- 以下为后续模块建表占位（由 M3~M8 补充）
 --   M4     面试会话：   t_interview_session / t_session_question
 --   M5     答题与幂等： t_session_answer / t_idempotent_record
---   M5     AI 日志：    t_ai_call_log
+--   M3     AI 日志：    t_ai_call_log
 --   M4     状态流水：   t_session_event
---   M6     简历：       t_resume
---   M7     报告：       t_interview_report
---   公共   字典：       t_dict
+--   M5     简历：       t_resume
+--   M6     报告：       t_interview_report
 -- ============================================================================
