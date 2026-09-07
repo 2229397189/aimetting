@@ -1,0 +1,43 @@
+# ===== Java / Maven =====
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+*.class
+*.log
+*.jar
+*.war
+*.ear
+hs_err_pid*
+replay_pid*
+
+# ===== IDE =====
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+*.swp
+.DS_Store
+
+# ===== Node / 前端 =====
+node_modules/
+dist/
+dist-ssr/
+.vite/
+*.local
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ===== 本地环境 / 密钥 =====
+.env
+.env.local
+.env.*.local
+*.key
+application-local.yml
+
+# ===== 本项目 =====
+.warm/
+*.tmp
+uploads/
