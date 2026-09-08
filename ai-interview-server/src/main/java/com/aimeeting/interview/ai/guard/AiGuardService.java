@@ -4,7 +4,6 @@ import com.aimeeting.interview.ai.AiProperties;
 import com.aimeeting.interview.ai.log.AiCallLogDO;
 import com.aimeeting.interview.ai.log.AiCallLogService;
 import com.aimeeting.interview.ai.model.AiErrorType;
-import com.aimeeting.interview.ai.model.AiHealthSnapshot;
 import com.aimeeting.interview.ai.model.AiRequest;
 import com.aimeeting.interview.ai.model.AiStage;
 import com.aimeeting.interview.ai.model.AiStreamListener;
@@ -16,6 +15,8 @@ import com.aimeeting.interview.common.convention.errorcode.BaseErrorCode;
 import com.aimeeting.interview.common.convention.exception.RemoteException;
 import com.aimeeting.interview.common.util.Md5Util;
 import java.time.Duration;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -250,7 +251,7 @@ public class AiGuardService {
             RemoteException last = null;
             AiRequest current = req;
             for (int attempt = 0; attempt <= maxRetries; attempt++) {
-                StreamResult result = StreamResult.collect(stage, provider, out);
+                StreamResult result = StreamResult.collect(current, provider, out);
                 long timeoutMillis = props.stageTimeoutMillis(stage.bizType);
                 boolean finished = result.await(timeoutMillis);
                 if (finished && result.getError() == null) {
@@ -318,16 +319,18 @@ public class AiGuardService {
      */
     public AiHealthSnapshot health() {
         CircuitBreaker.State state = circuitBreaker.state();
+        Map<String, String> states = new LinkedHashMap<>();
+        for (AiStage stage : AiStage.values()) {
+            states.put(stage.name(), state.name());
+        }
         return AiHealthSnapshot.builder()
                 .provider(provider.name())
                 .model(props.getModel())
                 .mock("mock".equalsIgnoreCase(provider.name()))
-                .available(provider.available())
-                .circuitBreaker(state.name())
                 .circuitBreakerOpen(state == CircuitBreaker.State.OPEN)
+                .circuitBreakerStates(states)
                 .bulkheadInUse(bulkhead.inUse())
                 .bulkheadTotal(bulkhead.total())
-                .message(state == CircuitBreaker.State.OPEN ? "AI 熔断已打开，正在降级服务" : "AI 服务正常")
                 .build();
     }
 
@@ -444,9 +447,9 @@ public class AiGuardService {
         /**
          * 发起一次真实流式调用并把增量转发给外部 listener。
          */
-        static StreamResult collect(AiStage stage, AiProvider provider, AiStreamListener out) {
+        static StreamResult collect(AiRequest req, AiProvider provider, AiStreamListener out) {
             StreamResult result = new StreamResult();
-            provider.streamChat(stage == null ? null : null, result.listener(out));
+            provider.streamChat(req, result.listener(out));
             return result;
         }
 

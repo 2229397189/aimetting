@@ -16,7 +16,7 @@ public class Bulkhead {
     private final Semaphore semaphore;
     private final int total;
 
-    public Bulkhead(int total) {
+    public Bulkhead(@Value("${ai.guard.bulkhead.total:20}") int total) {
         this.total = total;
         this.semaphore = new Semaphore(total);
     }

@@ -37,18 +37,24 @@ public class AiCallLogService {
      * @param log 调用日志
      */
     @Async
-    public void record(AiCallLogDO log) {
-        if (log == null) {
+    public void record(AiCallLogDO callLog) {
+        if (callLog == null) {
             return;
         }
-        if (log.getRequestDigest() != null && log.getRequestDigest().length() > DIGEST_MAX) {
-            log.setRequestDigest(log.getRequestDigest().substring(0, DIGEST_MAX));
+        if (callLog.getRequestDigest() != null && callLog.getRequestDigest().length() > DIGEST_MAX) {
+            callLog.setRequestDigest(callLog.getRequestDigest().substring(0, DIGEST_MAX));
         }
-        if (log.getResponseDigest() != null && log.getResponseDigest().length() > DIGEST_MAX) {
-            log.setResponseDigest(log.getResponseDigest().substring(0, DIGEST_MAX));
+        if (callLog.getResponseDigest() != null && callLog.getResponseDigest().length() > DIGEST_MAX) {
+            callLog.setResponseDigest(callLog.getResponseDigest().substring(0, DIGEST_MAX));
+        }
+        if (callLog.getErrorMsg() != null && callLog.getErrorMsg().length() > DIGEST_MAX) {
+            callLog.setErrorMsg(callLog.getErrorMsg().substring(0, DIGEST_MAX));
+        }
+        if (callLog.getCreateTime() == null) {
+            callLog.setCreateTime(LocalDateTime.now());
         }
         try {
-            aiCallLogMapper.insert(log);
+            aiCallLogMapper.insert(callLog);
         } catch (Exception e) {
             log.warn("[AiCallLog] 落库失败: {}", e.getMessage());
         }
