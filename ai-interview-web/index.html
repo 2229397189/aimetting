@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="AI 在线模拟面试平台 - 选方向、逐题作答、AI 实时评分与追问、生成五维能力报告" />
+    <title>AI 模拟面试平台</title>
+    <style>
+      html,
+      body,
+      #app {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        font-family: 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', Arial, sans-serif;
+        background: #f5f6fa;
+      }
+      /* 首屏骨架，避免白屏 */
+      .boot-loading {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        color: #4f46e5;
+        font-size: 15px;
+        letter-spacing: 1px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <div class="boot-loading">AI 模拟面试平台加载中…</div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

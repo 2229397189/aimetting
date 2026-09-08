@@ -73,3 +73,151 @@ CREATE TABLE IF NOT EXISTS t_question (
 --   M5     简历：       t_resume
 --   M6     报告：       t_interview_report
 -- ============================================================================
+
+
+-- 3. 简历表（M5）
+CREATE TABLE IF NOT EXISTS t_resume (
+  id           BIGINT AUTO_INCREMENT PRIMARY KEY,
+  user_id      BIGINT       NOT NULL,
+  title        VARCHAR(128) NOT NULL,
+  raw_text     VARCHAR(8000) DEFAULT NULL,
+  file_url     VARCHAR(512)  DEFAULT NULL,
+  parsed_json  VARCHAR(4000) DEFAULT NULL,
+  score        INT          DEFAULT NULL,
+  advantage    VARCHAR(2000) DEFAULT NULL,
+  suggestions  VARCHAR(2000) DEFAULT NULL,
+  parsed_by    VARCHAR(16)  NOT NULL DEFAULT 'AI',
+  is_default   INT          NOT NULL DEFAULT 0,
+  create_time  TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
+  update_time  TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
+  deleted      INT          NOT NULL DEFAULT 0
+);
+
+
+-- 4. 面试会话主表（M4）
+CREATE TABLE IF NOT EXISTS t_interview_session (
+  id             BIGINT AUTO_INCREMENT PRIMARY KEY,
+  session_no     VARCHAR(32)  NOT NULL,
+  user_id        BIGINT       NOT NULL,
+  resume_id      BIGINT       DEFAULT NULL,
+  directions     VARCHAR(255) NOT NULL,
+  difficulty     VARCHAR(16)  NOT NULL,
+  total_question INT          NOT NULL DEFAULT 8,
+  current_index  INT          NOT NULL DEFAULT 0,
+  status         VARCHAR(20)  NOT NULL DEFAULT 'INIT',
+  prev_status    VARCHAR(20)  DEFAULT NULL,
+  score          DECIMAL(5,2) DEFAULT NULL,
+  jd_text        VARCHAR(4000) DEFAULT NULL,
+  phase_plan     VARCHAR(255) DEFAULT NULL,
+  started_at     TIMESTAMP    DEFAULT NULL,
+  finished_at    TIMESTAMP    DEFAULT NULL,
+  create_time    TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
+  update_time    TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
+  deleted        INT          NOT NULL DEFAULT 0
+);
+
+
+-- 5. 会话题目表（M4）
+CREATE TABLE IF NOT EXISTS t_session_question (
+  id               BIGINT AUTO_INCREMENT PRIMARY KEY,
+  session_id       BIGINT       NOT NULL,
+  question_no      INT          NOT NULL,
+  question_id      BIGINT       DEFAULT NULL,
+  title            VARCHAR(1000) NOT NULL,
+  reference_points VARCHAR(2000) DEFAULT NULL,
+  source           VARCHAR(16)  NOT NULL,
+  difficulty       VARCHAR(16)  NOT NULL,
+  phase            VARCHAR(20)  DEFAULT NULL,
+  skipped          INT          NOT NULL DEFAULT 0,
+  create_time      TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
+  update_time      TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
+  deleted          INT          NOT NULL DEFAULT 0
+);
+
+
+-- 6. 答题记录表（M4）
+CREATE TABLE IF NOT EXISTS t_session_answer (
+  id                 BIGINT AUTO_INCREMENT PRIMARY KEY,
+  session_id         BIGINT       NOT NULL,
+  session_question_id BIGINT     NOT NULL,
+  user_id            BIGINT       NOT NULL,
+  content            VARCHAR(8000) NOT NULL,
+  is_follow_up       INT          NOT NULL DEFAULT 0,
+  parent_answer_id   BIGINT       DEFAULT NULL,
+  score              INT          DEFAULT NULL,
+  comment            VARCHAR(4000) DEFAULT NULL,
+  highlights         VARCHAR(2000) DEFAULT NULL,
+  gaps               VARCHAR(2000) DEFAULT NULL,
+  improved_answer    VARCHAR(4000) DEFAULT NULL,
+  evaluated_by       VARCHAR(16)  DEFAULT NULL,
+  follow_up_count    INT          NOT NULL DEFAULT 0,
+  skipped            INT          NOT NULL DEFAULT 0,
+  client_token       VARCHAR(64)  DEFAULT NULL,
+  create_time        TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
+  update_time        TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
+  deleted            INT          NOT NULL DEFAULT 0
+);
+
+
+-- 7. AI 调用日志表（M3）
+CREATE TABLE IF NOT EXISTS t_ai_call_log (
+  id               BIGINT AUTO_INCREMENT PRIMARY KEY,
+  user_id          BIGINT       DEFAULT NULL,
+  biz_type         VARCHAR(32)  NOT NULL,
+  provider         VARCHAR(32)  NOT NULL,
+  model            VARCHAR(64)  DEFAULT NULL,
+  request_digest   VARCHAR(512) DEFAULT NULL,
+  response_digest  VARCHAR(512) DEFAULT NULL,
+  prompt_tokens    INT          DEFAULT 0,
+  completion_tokens INT         DEFAULT 0,
+  cost_ms          BIGINT       DEFAULT 0,
+  success          INT          NOT NULL DEFAULT 1,
+  error_type       VARCHAR(32)  DEFAULT NULL,
+  error_msg        VARCHAR(512) DEFAULT NULL,
+  request_id       VARCHAR(64)  DEFAULT NULL,
+  create_time      TIMESTAMP    DEFAULT CURRENT_TIMESTAMP
+);
+
+
+-- 8. 会话状态流水表（M4）
+CREATE TABLE IF NOT EXISTS t_session_event (
+  id          BIGINT AUTO_INCREMENT PRIMARY KEY,
+  session_id  BIGINT       NOT NULL,
+  from_status VARCHAR(20)  DEFAULT NULL,
+  to_status   VARCHAR(20)  NOT NULL,
+  event       VARCHAR(64)  NOT NULL,
+  operator    BIGINT       DEFAULT NULL,
+  remark      VARCHAR(500) DEFAULT NULL,
+  create_time TIMESTAMP    DEFAULT CURRENT_TIMESTAMP
+);
+
+
+-- 9. 面试报告表（M6）
+CREATE TABLE IF NOT EXISTS t_interview_report (
+  id              BIGINT AUTO_INCREMENT PRIMARY KEY,
+  session_id      BIGINT       NOT NULL,
+  user_id         BIGINT       NOT NULL,
+  total_score     DECIMAL(5,2) NOT NULL DEFAULT 0,
+  dimension_json  VARCHAR(2000) DEFAULT NULL,
+  highlights      VARCHAR(2000) DEFAULT NULL,
+  improvements    VARCHAR(2000) DEFAULT NULL,
+  actions         VARCHAR(2000) DEFAULT NULL,
+  overall_comment VARCHAR(4000) DEFAULT NULL,
+  generated_by    VARCHAR(16)  NOT NULL DEFAULT 'AI',
+  create_time     TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
+  update_time     TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
+  deleted         INT          NOT NULL DEFAULT 0
+);
+
+
+-- 10. 字典表（M8）
+CREATE TABLE IF NOT EXISTS t_dict (
+  id         BIGINT AUTO_INCREMENT PRIMARY KEY,
+  type       VARCHAR(64) NOT NULL,
+  code       VARCHAR(64) NOT NULL,
+  label      VARCHAR(128) NOT NULL,
+  sort       INT          NOT NULL DEFAULT 0,
+  create_time TIMESTAMP  DEFAULT CURRENT_TIMESTAMP,
+  update_time TIMESTAMP  DEFAULT CURRENT_TIMESTAMP,
+  deleted    INT          NOT NULL DEFAULT 0
+);

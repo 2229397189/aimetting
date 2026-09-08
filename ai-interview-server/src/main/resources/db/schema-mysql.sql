@@ -76,3 +76,176 @@ CREATE TABLE IF NOT EXISTS t_question (
 --   M5     简历：       t_resume
 --   M6     报告：       t_interview_report
 -- ============================================================================
+
+
+-- 3. 简历表（M5）
+CREATE TABLE IF NOT EXISTS t_resume (
+  id           BIGINT       NOT NULL AUTO_INCREMENT,
+  user_id      BIGINT       NOT NULL,
+  title        VARCHAR(128) NOT NULL,
+  raw_text     TEXT         DEFAULT NULL COMMENT '原文',
+  file_url     VARCHAR(512) DEFAULT NULL COMMENT '文件地址',
+  parsed_json  TEXT         DEFAULT NULL COMMENT 'AI 解析结果 JSON',
+  score        INT          DEFAULT NULL COMMENT '0-100',
+  advantage    TEXT         DEFAULT NULL COMMENT '优势(JSON 数组)',
+  suggestions  TEXT         DEFAULT NULL COMMENT '建议(JSON 数组)',
+  parsed_by    VARCHAR(16)  NOT NULL DEFAULT 'AI' COMMENT 'AI|RULE',
+  is_default   TINYINT(1)   NOT NULL DEFAULT 0,
+  create_time  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  update_time  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  deleted      TINYINT(1)   NOT NULL DEFAULT 0,
+  PRIMARY KEY (id),
+  KEY idx_user (user_id, create_time)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='简历';
+
+
+-- 4. 面试会话主表（M4）
+CREATE TABLE IF NOT EXISTS t_interview_session (
+  id             BIGINT       NOT NULL AUTO_INCREMENT,
+  session_no     VARCHAR(32)  NOT NULL COMMENT 'IM+yyyyMMdd+8位随机',
+  user_id        BIGINT       NOT NULL,
+  resume_id      BIGINT       DEFAULT NULL,
+  directions     VARCHAR(255) NOT NULL COMMENT '逗号分隔方向',
+  difficulty     VARCHAR(16)  NOT NULL,
+  total_question INT          NOT NULL DEFAULT 8,
+  current_index  INT          NOT NULL DEFAULT 0 COMMENT '当前题号(1-based)，0=未开始',
+  status         VARCHAR(20)  NOT NULL DEFAULT 'INIT',
+  prev_status    VARCHAR(20)  DEFAULT NULL COMMENT 'PAUSED 前的状态',
+  score          DECIMAL(5,2) DEFAULT NULL COMMENT '总分',
+  jd_text        TEXT         DEFAULT NULL COMMENT '目标岗位 JD',
+  phase_plan     VARCHAR(255) DEFAULT NULL COMMENT '三阶段题量 JSON: {TECHNICAL:..,PROJECT:..,BEHAVIORAL:..}',
+  started_at     DATETIME     DEFAULT NULL,
+  finished_at    DATETIME     DEFAULT NULL,
+  create_time    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  update_time    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  deleted        TINYINT(1)   NOT NULL DEFAULT 0,
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_session_no (session_no),
+  KEY idx_user_status_time (user_id, status, create_time),
+  KEY idx_status_time (status, create_time)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='面试会话';
+
+
+-- 5. 会话题目表（M4，冗余题干）
+CREATE TABLE IF NOT EXISTS t_session_question (
+  id               BIGINT       NOT NULL AUTO_INCREMENT,
+  session_id       BIGINT       NOT NULL,
+  question_no      INT          NOT NULL,
+  question_id      BIGINT       DEFAULT NULL COMMENT '来自题库则为 ID，AI 生成则为 NULL',
+  title            VARCHAR(1000) NOT NULL,
+  reference_points TEXT         DEFAULT NULL COMMENT '考察要点 JSON',
+  source           VARCHAR(16)  NOT NULL COMMENT 'AI|BANK',
+  difficulty       VARCHAR(16)  NOT NULL,
+  phase            VARCHAR(20)  DEFAULT NULL COMMENT 'TECHNICAL|PROJECT|BEHAVIORAL',
+  skipped          TINYINT(1)   NOT NULL DEFAULT 0,
+  create_time      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  update_time      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  deleted          TINYINT(1)   NOT NULL DEFAULT 0,
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_session_qno (session_id, question_no),
+  KEY idx_session (session_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='会话题目';
+
+
+-- 6. 答题记录表（M4，追问以 parent_answer_id 串链）
+CREATE TABLE IF NOT EXISTS t_session_answer (
+  id                 BIGINT      NOT NULL AUTO_INCREMENT,
+  session_id         BIGINT      NOT NULL,
+  session_question_id BIGINT     NOT NULL,
+  user_id            BIGINT      NOT NULL,
+  content            TEXT        NOT NULL,
+  is_follow_up       TINYINT(1)  NOT NULL DEFAULT 0,
+  parent_answer_id   BIGINT      DEFAULT NULL COMMENT '追问答案指向原答案',
+  score              INT         DEFAULT NULL COMMENT '0-100',
+  comment            TEXT        DEFAULT NULL COMMENT '点评(Markdown)',
+  highlights         TEXT        DEFAULT NULL COMMENT 'JSON 数组',
+  gaps               TEXT        DEFAULT NULL COMMENT 'JSON 数组',
+  improved_answer    TEXT        DEFAULT NULL COMMENT '改进后参考答案',
+  evaluated_by       VARCHAR(16) DEFAULT NULL COMMENT 'AI|RULE',
+  follow_up_count    INT         NOT NULL DEFAULT 0,
+  skipped            TINYINT(1)  NOT NULL DEFAULT 0,
+  client_token       VARCHAR(64) DEFAULT NULL COMMENT '幂等令牌',
+  create_time        DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  update_time        DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  deleted            TINYINT(1)  NOT NULL DEFAULT 0,
+  PRIMARY KEY (id),
+  KEY idx_session_question (session_id, session_question_id),
+  KEY idx_parent (parent_answer_id),
+  KEY idx_user (user_id),
+  KEY idx_token (session_id, client_token)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='答题记录';
+
+
+-- 7. AI 调用日志表（M3，脱敏）
+CREATE TABLE IF NOT EXISTS t_ai_call_log (
+  id               BIGINT      NOT NULL AUTO_INCREMENT,
+  user_id          BIGINT      DEFAULT NULL,
+  biz_type         VARCHAR(32) NOT NULL COMMENT 'QUESTION|EVALUATE|FOLLOW_UP|RESUME|REPORT',
+  provider         VARCHAR(32) NOT NULL,
+  model            VARCHAR(64) DEFAULT NULL,
+  request_digest   VARCHAR(512) DEFAULT NULL,
+  response_digest  VARCHAR(512) DEFAULT NULL,
+  prompt_tokens    INT         DEFAULT 0,
+  completion_tokens INT        DEFAULT 0,
+  cost_ms          BIGINT      DEFAULT 0,
+  success          TINYINT(1)  NOT NULL DEFAULT 1,
+  error_type       VARCHAR(32) DEFAULT NULL,
+  error_msg        VARCHAR(512) DEFAULT NULL,
+  request_id       VARCHAR(64) DEFAULT NULL,
+  create_time      DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_biz_time (biz_type, create_time),
+  KEY idx_user_time (user_id, create_time),
+  KEY idx_success (success, create_time)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI调用日志';
+
+
+-- 8. 会话状态流水表（M4，审计）
+CREATE TABLE IF NOT EXISTS t_session_event (
+  id          BIGINT      NOT NULL AUTO_INCREMENT,
+  session_id  BIGINT      NOT NULL,
+  from_status VARCHAR(20) DEFAULT NULL,
+  to_status   VARCHAR(20) NOT NULL,
+  event       VARCHAR(64) NOT NULL COMMENT 'CREATE|START|SUBMIT|FOLLOW_UP|PAUSE|RESUME|FINISH|ABORT',
+  operator    BIGINT      DEFAULT NULL,
+  remark      VARCHAR(500) DEFAULT NULL,
+  create_time DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_session_time (session_id, create_time)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='会话状态流水';
+
+
+-- 9. 面试报告表（M6）
+CREATE TABLE IF NOT EXISTS t_interview_report (
+  id              BIGINT        NOT NULL AUTO_INCREMENT,
+  session_id      BIGINT        NOT NULL,
+  user_id         BIGINT        NOT NULL,
+  total_score     DECIMAL(5,2)  NOT NULL DEFAULT 0,
+  dimension_json  TEXT         DEFAULT NULL COMMENT '五维 JSON',
+  highlights      TEXT         DEFAULT NULL COMMENT 'JSON 数组',
+  improvements    TEXT         DEFAULT NULL COMMENT 'JSON 数组',
+  actions         TEXT         DEFAULT NULL COMMENT '后续行动 JSON 数组',
+  overall_comment TEXT         DEFAULT NULL COMMENT '总评',
+  generated_by    VARCHAR(16)   NOT NULL DEFAULT 'AI' COMMENT 'AI|RULE',
+  create_time     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  update_time     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  deleted         TINYINT(1)    NOT NULL DEFAULT 0,
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_session (session_id),
+  KEY idx_user_time (user_id, create_time)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='面试报告';
+
+
+-- 10. 字典表（M8，方向/难度展示）
+CREATE TABLE IF NOT EXISTS t_dict (
+  id         BIGINT      NOT NULL AUTO_INCREMENT,
+  type       VARCHAR(64) NOT NULL COMMENT 'direction|difficulty',
+  code       VARCHAR(64) NOT NULL,
+  label      VARCHAR(128) NOT NULL,
+  sort       INT         NOT NULL DEFAULT 0,
+  create_time DATETIME   NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  update_time DATETIME   NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  deleted    TINYINT(1)  NOT NULL DEFAULT 0,
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_type_code (type, code)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='字典';
