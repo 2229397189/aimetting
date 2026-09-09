@@ -1,0 +1,89 @@
+/**
+ * 打印样式：报告导出 PDF（浏览器原生打印方案，零新依赖）
+ * 核心思路：默认隐藏页面所有元素，仅保留带 .print-area 的报告主体，
+ * 因此无需关心侧边栏 / 头部 / 按钮 / 面包屑的具体结构。
+ */
+
+@media print {
+  /* 纸张边距：上下略宽，左右适中 */
+  @page {
+    margin: 12mm;
+  }
+
+  /* 1. 隐藏整页所有内容（含头部、侧边栏、按钮、面包屑等） */
+  body * {
+    visibility: hidden !important;
+  }
+
+  /* 2. 仅报告主体及其子元素可见 */
+  .print-area,
+  .print-area * {
+    visibility: visible !important;
+  }
+
+  /* 3. 报告主体脱离文档流铺满打印区域，置于左上角 */
+  .print-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    background: #ffffff !important;
+  }
+
+  /* 4. 去掉外层容器的最大宽度与内边距，让内容全宽 */
+  .app-main,
+  .app-main.no-header {
+    padding: 0 !important;
+  }
+
+  .page-container {
+    max-width: 100% !important;
+    padding: 0 !important;
+  }
+
+  /* 5. 省墨：去掉卡片阴影与背景色，仅保留浅色描边 */
+  .print-area .card {
+    background: #ffffff !important;
+    box-shadow: none !important;
+    border-color: #e5e7eb !important;
+  }
+
+  .print-area .q-card {
+    background: #ffffff !important;
+    border-color: #e5e7eb !important;
+  }
+
+  /* 6. 分页控制：每道题不跨页 */
+  .print-area .q-card {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .print-area .card {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* 7. 图表（ECharts canvas）保持原尺寸，避免被压缩 */
+  .print-area .radar-chart {
+    width: 100% !important;
+    height: 340px !important;
+  }
+
+  .print-area canvas {
+    max-width: 100% !important;
+  }
+
+  /* 8. 按钮 / 操作区等无需打印的元素彻底隐藏（不占空间） */
+  .no-print {
+    display: none !important;
+  }
+
+  /* 9. 强制打印背景色（保留必要的语义色块，如分数等级标签） */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}

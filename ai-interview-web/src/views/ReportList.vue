@@ -57,9 +57,10 @@
         <el-table-column label="生成时间" width="170">
           <template #default="{ row }">{{ formatTime(row.createdAt) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="100" fixed="right">
+        <el-table-column label="操作" width="150" fixed="right">
           <template #default="{ row }">
             <el-button text type="primary" size="small" @click.stop="goDetail(row.sessionId)">查看</el-button>
+            <el-button text type="success" size="small" @click.stop="goExportPdf(row.sessionId)">导出 PDF</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -120,6 +121,11 @@ async function loadList(): Promise<void> {
 
 function goDetail(sessionId: number): void {
   router.push(`/report/${sessionId}`)
+}
+
+/** 跳转详情页并自动触发打印（?autoprint=1） */
+function goExportPdf(sessionId: number): void {
+  router.push(`/report/${sessionId}?autoprint=1`)
 }
 
 function onRowClick(row: ReportBrief): void {
