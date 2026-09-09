@@ -14,6 +14,9 @@ public enum AiErrorType {
     /** 服务不可用（连接失败 / 5xx）。 */
     UNAVAILABLE,
 
+    /** 账户额度耗尽 / 计费异常（402）。永久性错误，重试无意义且会浪费调用。 */
+    QUOTA,
+
     /** 被限流（429）。 */
     RATE_LIMIT,
 

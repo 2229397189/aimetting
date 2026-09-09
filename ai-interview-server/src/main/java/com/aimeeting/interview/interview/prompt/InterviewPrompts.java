@@ -1,5 +1,6 @@
 package com.aimeeting.interview.interview.prompt;
 
+import com.aimeeting.interview.ai.guard.PromptSanitizer;
 import java.util.List;
 
 /**
@@ -8,6 +9,9 @@ import java.util.List;
  * <p>评分与出题统一走「纯 JSON 模式」：请求带 {@code response_format=json_object}，
  * 模型只返回严格 JSON 对象；评分结果的面向用户点评正文放在 JSON 的 {@code comment} 字段里，
  * 由上层在评分完成后统一下发给前端，避免把原始 JSON 透传为点评。
+ *
+ * <p>所有来自用户的文本（候选人答案、简历摘要、岗位 JD）在拼装前统一经
+ * {@link PromptSanitizer} 清洗，防止提示词注入劫持面试官角色或伪造评分指令。</p>
  */
 public final class InterviewPrompts {
 
@@ -50,10 +54,10 @@ public final class InterviewPrompts {
         sb.append("请为").append(nullToEmpty(directionLabel)).append("方向的候选人出第 ").append(questionNo)
                 .append("/").append(totalQuestion).append(" 道面试题（难度 ").append(difficulty).append("）。\n");
         if (jdText != null && !jdText.isBlank()) {
-            sb.append("目标岗位 JD：").append(clip(jdText, 1500)).append("\n");
+            sb.append("目标岗位 JD：").append(PromptSanitizer.sanitize(clip(jdText, 1500))).append("\n");
         }
         if (resumeDigest != null && !resumeDigest.isBlank()) {
-            sb.append("候选人简历摘要：").append(clip(resumeDigest, 800)).append("\n");
+            sb.append("候选人简历摘要：").append(PromptSanitizer.sanitize(clip(resumeDigest, 800))).append("\n");
         }
         if (usedTitles != null && !usedTitles.isEmpty()) {
             sb.append("以下问题已经问过，请避免重复：").append(clip(String.join(" / ", usedTitles), 800)).append("\n");
@@ -97,7 +101,7 @@ public final class InterviewPrompts {
         if (isFollowUp) {
             sb.append("以下是候选人对追问的补充回答，请重点评估补充的深度与准确性。\n");
         }
-        sb.append("候选人回答：").append(nullToEmpty(answer)).append("\n");
+        sb.append("候选人回答：").append(PromptSanitizer.sanitize(answer, 5000)).append("\n");
         sb.append("请严格按系统提示的 JSON 结构输出：必须包含 comment / score / highlights / gaps / "
                 + "needFollowUp / followUpQuestion / improvedAnswer 七个字段。"
                 + "score 为 0-100 整数；needFollowUp 表示是否需要继续追问"

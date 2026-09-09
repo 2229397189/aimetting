@@ -15,6 +15,7 @@ import com.aimeeting.interview.common.convention.result.PageQuery;
 import com.aimeeting.interview.common.idempotent.IdempotencyService;
 import com.aimeeting.interview.common.idempotent.IdempotentStage;
 import com.aimeeting.interview.common.idempotent.TryStartResult;
+import com.aimeeting.interview.ai.guard.PromptSanitizer;
 import com.aimeeting.interview.ai.parser.AiJsonParser;
 import com.aimeeting.interview.common.util.JsonUtil;
 import com.aimeeting.interview.common.util.Md5Util;
@@ -115,25 +116,27 @@ public class ResumeServiceImpl implements ResumeService {
         resumeDO.setRawText(content);
         resumeDO.setFileUrl(fileUrl);
 
-        // AI 解析：修复 + 解析失败自动重试 2 次。deepseek 推理模型偶发无视 response_format=json_object、
-        // 在 content 里输出叙述文字（如"我们需要解析…"）。每次尝试先做 JSON 修复（剥离前后缀文字 /
-        // 围栏后取最外层 JSON 对象），失败则以独立单飞键重试；最多尝试 3 次（首次 + 重试 2 次）
-        // 仍失败才降级 RULE。
+        // AI 解析：先做 JSON 修复（剥离前后缀文字 / 围栏后取最外层 JSON 对象），
+        // 仅当「AI 确实返回了内容、但解析不出合法 JSON」时才外层重试一次（换独立单飞键强制重调）。
+        // 传输层失败（网络 / 402 / 超时 / 熔断）不再外层重试：AiGuardService 内部已按退避策略重试过，
+        // 外层再重试只会把单次解析的成本放大到数倍，且对 402 这类永久性错误毫无意义。
         String baseKey = "resume:" + userId + ":" + Md5Util.md5Safe(content);
         String repairedJson = null;
-        for (int attempt = 1; attempt <= 3 && repairedJson == null; attempt++) {
+        for (int attempt = 1; attempt <= 2 && repairedJson == null; attempt++) {
             String sfKey = attempt == 1 ? baseKey : baseKey + ":retry" + attempt;
+            String raw;
             try {
-                String raw = aiGuardService.execute(AiStage.RESUME_PARSE, sfKey, userId,
+                raw = aiGuardService.execute(AiStage.RESUME_PARSE, sfKey, userId,
                         buildResumeRequest(content), AiTextResult::getContent);
-                repairedJson = AiJsonParser.tryRepairJson(raw);
-                if (repairedJson == null) {
-                    log.warn("[Resume] AI 第 {} 次返回非合法 JSON，准备重试", attempt);
-                }
             } catch (ClientException ce) {
                 throw ce;
             } catch (Exception e) {
-                log.warn("[Resume] AI 调用异常(第 {} 次): {}", attempt, e.getMessage());
+                log.warn("[Resume] AI 调用失败（传输层，内部已重试，不再外层重试）: {}", e.getMessage());
+                break;
+            }
+            repairedJson = AiJsonParser.tryRepairJson(raw);
+            if (repairedJson == null) {
+                log.warn("[Resume] AI 第 {} 次返回非合法 JSON，准备重试", attempt);
             }
         }
 
@@ -273,7 +276,10 @@ public class ResumeServiceImpl implements ResumeService {
     }
 
     private AiRequest buildResumeRequest(String content) {
-        String userPrompt = "以下是候选人简历原文：\n" + (content.length() > 8000 ? content.substring(0, 8000) : content);
+        // 简历原文属于用户输入：拼装前做提示词注入清洗（剥离控制令牌 / 伪造角色行 / 脚本片段），
+        // 并按长度截断以控制 token 成本；数据库仍保存未清洗的原文，不影响存档与展示。
+        String clipped = content.length() > 8000 ? content.substring(0, 8000) : content;
+        String userPrompt = "以下是候选人简历原文：\n" + PromptSanitizer.sanitize(clipped);
         return AiRequest.builder()
                 .bizType(AiBizType.RESUME)
                 .systemPrompt("你是资深技术招聘官兼简历优化专家。严格只输出 JSON，不要输出任何额外说明文字。"

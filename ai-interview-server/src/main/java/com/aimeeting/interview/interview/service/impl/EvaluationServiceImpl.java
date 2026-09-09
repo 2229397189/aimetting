@@ -68,8 +68,10 @@ public class EvaluationServiceImpl implements EvaluationService {
 
         long waitMillis = aiProperties.stageTimeoutMillis(AiBizType.EVALUATE) + 30_000L;
 
-        // 业务级保险：AI 偶发返回无法解析 JSON 或瞬时失败时，自动重试一次再降级，
-        // 避免直接走 RULE 造成偶发降级（与 resume 解析同源风险）。
+        // 业务级保险：仅当「AI 确实返回了内容、但解析不出合法 JSON」时外层重试一次再降级，
+        // 避免偶发噪声导致评分静默降级（与 resume 解析同源风险）。
+        // 传输层失败（网络 / 402 / 超时 / 熔断）不再外层重试：AiGuardService 内部已按退避策略重试过，
+        // 外层再重试只会放大 token 成本，且对 402 这类永久性错误无效。
         EvaluationResult parsed = null;
         for (int attempt = 1; attempt <= 2 && parsed == null; attempt++) {
             String sfKey = attempt == 1 ? singleFlightKey : singleFlightKey + ":retry";
@@ -104,9 +106,9 @@ public class EvaluationServiceImpl implements EvaluationService {
             }
             AiTextResult result = resultRef.get();
             if (result == null) {
-                log.warn("[Evaluation] AI 评分失败(第 {} 次), sessionId={}, err={}",
-                        attempt, ctx.getSessionId(), errorRef.get() == null ? "timeout" : errorRef.get().getMessage());
-                continue;
+                log.warn("[Evaluation] AI 评分调用失败（传输层，内部已重试，不再外层重试）, sessionId={}, err={}",
+                        ctx.getSessionId(), errorRef.get() == null ? "timeout" : errorRef.get().getMessage());
+                break;
             }
             try {
                 parsed = fromAi(result.getContent(), ctx);

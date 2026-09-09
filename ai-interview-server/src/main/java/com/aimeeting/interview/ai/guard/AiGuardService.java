@@ -56,6 +56,7 @@ public class AiGuardService {
     private final AiProperties props;
     private final SingleFlight singleFlight;
     private final Bulkhead bulkhead;
+    private final AiRateLimiter rateLimiter;
     private final AiCallLogService callLogService;
     private final CircuitBreaker circuitBreaker;
 
@@ -67,11 +68,12 @@ public class AiGuardService {
     });
 
     public AiGuardService(AiProvider provider, AiProperties props, SingleFlight singleFlight,
-                          Bulkhead bulkhead, AiCallLogService callLogService) {
+                          Bulkhead bulkhead, AiRateLimiter rateLimiter, AiCallLogService callLogService) {
         this.provider = provider;
         this.props = props;
         this.singleFlight = singleFlight;
         this.bulkhead = bulkhead;
+        this.rateLimiter = rateLimiter;
         this.callLogService = callLogService;
         this.circuitBreaker = new CircuitBreaker(props.getCircuitBreakerWindowSize(),
                 props.getCircuitBreakerFailureRate(), Duration.ofSeconds(props.getCircuitBreakerOpenSeconds()));
@@ -109,6 +111,13 @@ public class AiGuardService {
      */
     private <T> T callWithGuards(AiStage stage, Long userId, AiRequest req, Function<AiTextResult, T> parser) {
         long start = System.currentTimeMillis();
+        if (!rateLimiter.allow(userId)) {
+            RemoteException limited = new RemoteException("AI 调用过于频繁，请稍后再试",
+                    BaseErrorCode.RATE_LIMITED, AiErrorType.UNAVAILABLE);
+            callLogService.record(buildLog(stage, userId, req, null, false, AiErrorType.UNAVAILABLE,
+                    limited.getMessage(), System.currentTimeMillis() - start));
+            throw limited;
+        }
         if (!circuitBreaker.allowRequest()) {
             RemoteException blocked = new RemoteException("AI 熔断已打开，暂时不可用", BaseErrorCode.AI_UNAVAILABLE, AiErrorType.UNAVAILABLE);
             callLogService.record(buildLog(stage, userId, req, null, false, AiErrorType.UNAVAILABLE,
@@ -234,6 +243,13 @@ public class AiGuardService {
      */
     private StreamResult streamWithGuards(AiStage stage, Long userId, AiRequest req, AiStreamListener out) {
         long start = System.currentTimeMillis();
+        if (!rateLimiter.allow(userId)) {
+            RemoteException limited = new RemoteException("AI 调用过于频繁，请稍后再试",
+                    BaseErrorCode.RATE_LIMITED, AiErrorType.UNAVAILABLE);
+            callLogService.record(buildLog(stage, userId, req, null, false, AiErrorType.UNAVAILABLE,
+                    limited.getMessage(), System.currentTimeMillis() - start));
+            throw limited;
+        }
         if (!circuitBreaker.allowRequest()) {
             RemoteException blocked = new RemoteException("AI 熔断已打开，暂时不可用", BaseErrorCode.AI_UNAVAILABLE, AiErrorType.UNAVAILABLE);
             callLogService.record(buildLog(stage, userId, req, null, false, AiErrorType.UNAVAILABLE,

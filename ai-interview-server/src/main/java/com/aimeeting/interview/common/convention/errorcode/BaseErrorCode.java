@@ -56,7 +56,15 @@ public enum BaseErrorCode implements IErrorCode {
     AI_UNAVAILABLE("C0501", "AI 服务暂不可用，已切换备用方案"),
     AI_BUSY("C0502", "AI 服务繁忙，请稍后再试"),
     AI_WAIT_TIMEOUT("C0503", "AI 服务响应较慢，请稍后重试"),
-    AI_TIMEOUT("C0504", "AI 服务响应超时，已切换备用方案");
+    AI_TIMEOUT("C0504", "AI 服务响应超时，已切换备用方案"),
+
+    /**
+     * 账户额度耗尽 / 计费异常（供应商返回 402）。
+     *
+     * <p>属永久性错误：不重试、直接降级，并在日志与调用记录里显式标记，避免被误判为"服务不可用"
+     * 而反复重试、放大成本。</p>
+     */
+    AI_QUOTA_EXHAUSTED("C0505", "AI 额度不足，请检查账户余额后重试");
 
     private final String code;
 

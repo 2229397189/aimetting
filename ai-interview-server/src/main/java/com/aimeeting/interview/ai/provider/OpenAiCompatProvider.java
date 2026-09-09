@@ -1,5 +1,6 @@
 package com.aimeeting.interview.ai.provider;
 
+import com.aimeeting.interview.ai.model.AiErrorType;
 import com.aimeeting.interview.ai.model.AiRequest;
 import com.aimeeting.interview.ai.model.AiStreamListener;
 import com.aimeeting.interview.ai.model.AiTextResult;
@@ -61,8 +62,9 @@ public class OpenAiCompatProvider implements AiProvider {
         Request httpReq = buildRequest(body);
         try (Response resp = httpClient.newCall(httpReq).execute()) {
             if (!resp.isSuccessful() || resp.body() == null) {
-                throw new RemoteException("AI 服务返回异常: HTTP " + resp.code(),
-                        BaseErrorCode.REMOTE_ERROR, com.aimeeting.interview.ai.model.AiErrorType.UNAVAILABLE);
+                int status = resp.code();
+                throw new RemoteException("AI 服务返回异常: HTTP " + status + hintOfStatus(status),
+                        errorCodeOfStatus(status), errorTypeOfStatus(status));
             }
             String text = resp.body().string();
             JsonNode root = objectMapper.readTree(text);
@@ -89,8 +91,9 @@ public class OpenAiCompatProvider implements AiProvider {
         int[] tokens = {0, 0};
         try (Response resp = httpClient.newCall(httpReq).execute()) {
             if (!resp.isSuccessful() || resp.body() == null) {
-                listener.onError(new RemoteException("AI 流式服务返回异常: HTTP " + resp.code(),
-                        BaseErrorCode.REMOTE_ERROR, com.aimeeting.interview.ai.model.AiErrorType.UNAVAILABLE));
+                int status = resp.code();
+                listener.onError(new RemoteException("AI 流式服务返回异常: HTTP " + status + hintOfStatus(status),
+                        errorCodeOfStatus(status), errorTypeOfStatus(status)));
                 return;
             }
             BufferedSource source = resp.body().source();
@@ -181,6 +184,52 @@ public class OpenAiCompatProvider implements AiProvider {
             content = root.path("choices").path(0).path("message").path("reasoning_content").asText("");
         }
         return content == null ? "" : content;
+    }
+
+    /**
+     * 按 HTTP 状态码判定失败类型：把「可重试的瞬时故障」与「应快速失败的永久性错误」区分开。
+     *
+     * <p>关键点：402（额度耗尽）/ 401 / 403 及其他 4xx 都属于永久性错误。若笼统归为 UNAVAILABLE，
+     * 上层会退避重试并计入熔断——既浪费调用额度、放大成本，又把真实原因（没钱了 / Key 无效）
+     * 掩盖成"服务不可用"，非常误导排查。</p>
+     */
+    private static AiErrorType errorTypeOfStatus(int status) {
+        if (status == 402) {
+            return AiErrorType.QUOTA;
+        }
+        if (status == 429) {
+            return AiErrorType.RATE_LIMIT;
+        }
+        if (status >= 400 && status < 500) {
+            // 401 / 403 鉴权失败，其余 4xx 为请求参数问题，均不可重试
+            return AiErrorType.PARAMS;
+        }
+        return AiErrorType.UNAVAILABLE;
+    }
+
+    /** 与 {@link #errorTypeOfStatus(int)} 配套的错误码，便于接口返回与日志直观识别。 */
+    private static BaseErrorCode errorCodeOfStatus(int status) {
+        if (status == 402) {
+            return BaseErrorCode.AI_QUOTA_EXHAUSTED;
+        }
+        if (status == 429) {
+            return BaseErrorCode.AI_BUSY;
+        }
+        return BaseErrorCode.REMOTE_ERROR;
+    }
+
+    /** 状态码的人类可读提示，直接拼进异常信息，便于一眼定位。 */
+    private static String hintOfStatus(int status) {
+        if (status == 402) {
+            return "（账户额度耗尽，请充值）";
+        }
+        if (status == 401 || status == 403) {
+            return "（鉴权失败，请检查 API Key）";
+        }
+        if (status == 429) {
+            return "（被供应商限流）";
+        }
+        return "";
     }
 
     private String modelOf(AiRequest request) {

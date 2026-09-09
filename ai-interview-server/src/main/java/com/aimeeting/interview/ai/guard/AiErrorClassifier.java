@@ -13,9 +13,16 @@ public final class AiErrorClassifier {
     private AiErrorClassifier() {
     }
 
-    /** 仅 TIMEOUT / UNAVAILABLE 可重试。 */
+    /**
+     * 是否可重试。
+     *
+     * <p>TIMEOUT / UNAVAILABLE 属瞬时故障，退避后重试有意义；RATE_LIMIT(429) 通常是短时限制，
+     * 也可退避重试。而 QUOTA(402 额度耗尽) / PARAMS(401、403 等鉴权或参数问题) 属永久性错误，
+     * 重试既不能成功，还会继续消耗调用额度、放大成本并推迟降级，故一律不重试。</p>
+     */
     public static boolean retryable(AiErrorType type) {
-        return type == AiErrorType.TIMEOUT || type == AiErrorType.UNAVAILABLE;
+        return type == AiErrorType.TIMEOUT || type == AiErrorType.UNAVAILABLE
+                || type == AiErrorType.RATE_LIMIT;
     }
 
     /** 从异常对象推断错误类型。 */
