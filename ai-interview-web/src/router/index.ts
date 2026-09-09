@@ -54,6 +54,12 @@ const routes: RouteRecordRaw[] = [
     meta: { title: '面试报告' },
   },
   {
+    path: '/replay/:id',
+    name: 'InterviewReplay',
+    component: () => import('@/views/InterviewReplay.vue'),
+    meta: { title: '面试回放' },
+  },
+  {
     path: '/report',
     name: 'ReportList',
     component: () => import('@/views/ReportList.vue'),

@@ -90,7 +90,7 @@
         <el-table-column label="创建时间" width="170">
           <template #default="{ row }">{{ formatTime(row.createdAt) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="210" fixed="right">
+        <el-table-column label="操作" width="260" fixed="right">
           <template #default="{ row }">
             <el-button
               v-if="canContinue(row.status)"
@@ -106,6 +106,13 @@
               size="small"
               @click="goReport(row.id)"
             >查看报告</el-button>
+            <el-button
+              v-if="canReplay(row.status)"
+              text
+              type="primary"
+              size="small"
+              @click="goReplay(row.id)"
+            >回放</el-button>
             <el-button text type="danger" size="small" @click="removeSession(row)">删除</el-button>
           </template>
         </el-table-column>
@@ -169,6 +176,11 @@ function canContinue(status: SessionStatus): boolean {
   return ['INIT', 'ASKING', 'PAUSED', 'EVALUATING', 'FOLLOW_UP'].includes(status)
 }
 
+/** 已完成 / 已放弃的会话有题目与作答记录，可回放 */
+function canReplay(status: SessionStatus): boolean {
+  return ['COMPLETED', 'ABORTED'].includes(status)
+}
+
 function scoreClass(score?: number | null): string {
   const n = Number(score || 0)
   if (n >= 80) return 'score-good'
@@ -221,6 +233,9 @@ function goContinue(id: number): void {
 }
 function goReport(id: number): void {
   router.push(`/report/${id}`)
+}
+function goReplay(id: number): void {
+  router.push(`/replay/${id}`)
 }
 function goSetup(): void {
   router.push('/interview/setup')
@@ -282,5 +297,20 @@ onMounted(() => {
   margin-top: 16px;
   display: flex;
   justify-content: flex-end;
+}
+
+/* 移动端：筛选项占满整行，表格横向滚动 */
+@media (max-width: 767px) {
+  .filter-item {
+    width: 100%;
+  }
+
+  .filters {
+    gap: 8px;
+  }
+
+  .filters > .el-button {
+    flex: 1;
+  }
 }
 </style>
