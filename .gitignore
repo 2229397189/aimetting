@@ -48,3 +48,8 @@ ai-interview-server/*.log
 
 # ===== WorkBuddy 内部数据（非项目产物） =====
 .workbuddy/
+
+# ===== 构建产物 & 调试残留 =====
+ai-interview-server/src/main/resources/static/
+ai-interview-web/dist/
+ai-interview-server/*.txt
