@@ -7,7 +7,7 @@
       </template>
     </EmptyState>
 
-    <template v-else>
+    <div v-else class="print-area">
       <!-- 头部：总分 + 雷达 -->
       <section class="card head-card">
         <div class="head-left">
@@ -30,7 +30,8 @@
           </div>
           <div class="head-actions">
             <el-button type="primary" :icon="Download" :loading="exporting" @click="exportMarkdown">导出 Markdown</el-button>
-            <el-button :icon="Refresh" @click="loadReport">刷新</el-button>
+            <el-button type="success" :icon="Printer" class="no-print" @click="exportPdf">导出 PDF</el-button>
+            <el-button :icon="Refresh" class="no-print" @click="loadReport">刷新</el-button>
           </div>
         </div>
         <div class="head-right">
@@ -72,6 +73,66 @@
             <li v-for="(a, i) in report.actions" :key="i">{{ a }}</li>
           </ul>
           <p v-else class="muted">暂无</p>
+        </div>
+      </section>
+
+      <!-- 学习路线：弱项 → 提升路径 -->
+      <section class="card mt-16">
+        <div class="card-header">
+          <div class="card-title">学习路线 · 针对性提升</div>
+          <span class="muted study-sub">基于五维最弱 2 项生成，勾选进度自动保存</span>
+        </div>
+
+        <EmptyState
+          v-if="!studyItems.length"
+          description="暂无五维评分数据，暂无法生成学习路线"
+          min-height="120"
+        />
+
+        <div v-else class="study-list">
+          <div
+            v-for="(it, di) in studyItems"
+            :key="it.key"
+            class="study-card"
+            :class="{ 'study-card--top': di === 0 }"
+          >
+            <div class="study-card__head">
+              <div class="study-card__title">
+                <el-tag v-if="di === 0" type="danger" effect="dark" size="small">最弱项</el-tag>
+                <span class="study-dim">{{ it.label }}</span>
+                <span class="study-score" :class="scoreClass(it.score)">{{ formatScore(it.score) }} 分</span>
+              </div>
+              <div class="study-card__meta">
+                <el-tag size="small" effect="plain">建议周期：{{ it.cycle }}</el-tag>
+                <span class="study-progress-text">{{ doneCount(it.key) }}/{{ it.actions.length }} 已完成</span>
+              </div>
+            </div>
+
+            <p class="study-goal"><strong>目标：</strong>{{ it.goal }}</p>
+
+            <el-progress
+              :percentage="Math.round((doneCount(it.key) / it.actions.length) * 100)"
+              :stroke-width="8"
+            />
+
+            <el-steps direction="vertical" class="study-steps">
+              <el-step
+                v-for="(act, ai) in it.actions"
+                :key="ai"
+                :status="(progress[it.key]?.[ai] ? 'finish' : 'wait') as any"
+              >
+                <template #title>
+                  <label class="study-step">
+                    <el-checkbox
+                      :model-value="!!progress[it.key]?.[ai]"
+                      @change="(val: any) => setChecked(it.key, ai, val === true)"
+                    />
+                    <span :class="{ 'is-done': progress[it.key]?.[ai] }">{{ act }}</span>
+                  </label>
+                </template>
+              </el-step>
+            </el-steps>
+          </div>
         </div>
       </section>
 
@@ -132,15 +193,15 @@
           </div>
         </div>
       </section>
-    </template>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { CircleCheck, Download, Promotion, Refresh, WarningFilled } from '@element-plus/icons-vue'
+import { CircleCheck, Download, Printer, Promotion, Refresh, WarningFilled } from '@element-plus/icons-vue'
 import { reportApi } from '@/api/report'
 import type { DimensionKey, ReportDetail, ReportItem } from '@/types'
 import {
@@ -148,8 +209,10 @@ import {
   difficultyLabel,
   difficultyTagType,
   directionLabel,
+  normalizeDimensions,
   phaseLabel,
 } from '@/utils/dict'
+import { STUDY_ROADMAP, STUDY_ROADMAP_FALLBACK } from '@/constants/studyRoadmap'
 import { formatScore, scoreLevel } from '@/utils/format'
 import RadarChart from '@/components/RadarChart/index.vue'
 import PageLoading from '@/components/PageLoading/index.vue'
@@ -189,6 +252,102 @@ const levelClass = computed<string>(() => {
   if (lvl === '中等' || lvl === '及格') return 'level-mid'
   return 'level-bad'
 })
+
+/* ------------------------------ 学习路线 ------------------------------ */
+
+/** 单个弱项维度的学习路线数据 */
+interface WeakItem {
+  key: DimensionKey
+  label: string
+  score: number
+  goal: string
+  cycle: string
+  actions: string[]
+}
+
+/**
+ * 取五维中分数最低的 2 个维度，组装学习路线。
+ * 维度缺失或为空时返回空数组（由模板兜底文案处理）。
+ */
+const studyItems = computed<WeakItem[]>(() => {
+  const dims = dimensionsData.value
+  if (!dims) return []
+  const norm = normalizeDimensions(dims, 60)
+  const entries = Object.keys(DIMENSION_LABELS)
+    .map((k) => ({ key: k as DimensionKey, score: Number(norm[k]) }))
+    .filter((e) => Number.isFinite(e.score))
+  if (!entries.length) return []
+  // 分数升序：最弱排最前
+  entries.sort((a, b) => a.score - b.score)
+  return entries.slice(0, 2).map((e) => {
+    const map = STUDY_ROADMAP[e.key] || STUDY_ROADMAP_FALLBACK
+    return {
+      key: e.key,
+      label: DIMENSION_LABELS[e.key] ?? e.key,
+      score: e.score,
+      goal: map.goal,
+      cycle: map.cycle,
+      actions: map.actions,
+    }
+  })
+})
+
+/** 报告 id（用于 localStorage 进度 key，缺失时回退到 sessionId） */
+const reportId = computed<string>(() => String(report.value?.id ?? sessionId.value))
+
+/** 各维度勾选进度：key 为维度枚举，value 为与 actions 等长的布尔数组 */
+const progress = ref<Record<string, boolean[]>>({})
+
+function storageKey(dimKey: string): string {
+  return `study-roadmap-${reportId.value}-${dimKey}`
+}
+
+/** 从 localStorage 读取某维度的勾选进度 */
+function loadChecked(dimKey: string, len: number): boolean[] {
+  try {
+    const raw = localStorage.getItem(storageKey(dimKey))
+    if (raw) {
+      const arr = JSON.parse(raw)
+      if (Array.isArray(arr)) {
+        return arr
+          .map((b) => !!b)
+          .slice(0, len)
+          .concat(Array(Math.max(0, len - arr.length)).fill(false))
+      }
+    }
+  } catch (e) {
+    /* 解析失败则视为未勾选 */
+  }
+  return Array(len).fill(false)
+}
+
+/** 切换某条动作的勾选状态并持久化 */
+function setChecked(dimKey: string, idx: number, val: boolean): void {
+  const item = studyItems.value.find((i) => i.key === dimKey)
+  const len = item?.actions.length ?? 0
+  if (!progress.value[dimKey]) progress.value[dimKey] = Array(len).fill(false)
+  progress.value[dimKey][idx] = val
+  localStorage.setItem(storageKey(dimKey), JSON.stringify(progress.value[dimKey]))
+}
+
+/** 某维度已勾选条数 */
+function doneCount(dimKey: string): number {
+  const arr = progress.value[dimKey] || []
+  return arr.filter(Boolean).length
+}
+
+/** 维度数据就绪后初始化勾选进度（避免模板首屏读到 undefined） */
+watch(
+  studyItems,
+  (items) => {
+    items.forEach((it) => {
+      if (!progress.value[it.key]) {
+        progress.value[it.key] = loadChecked(it.key, it.actions.length)
+      }
+    })
+  },
+  { immediate: true },
+)
 
 async function loadReport(): Promise<void> {
   loading.value = true
@@ -232,8 +391,19 @@ function goBack(): void {
   router.push('/interview')
 }
 
-onMounted(() => {
-  void loadReport()
+/** 唤起浏览器打印（用户可在打印对话框中“另存为 PDF”） */
+function exportPdf(): void {
+  window.print()
+}
+
+onMounted(async () => {
+  await loadReport()
+  // 列表页通过 ?autoprint=1 跳转时，加载完成后自动触发打印
+  if (route.query.autoprint === '1') {
+    // 等待雷达图 canvas 与布局渲染完成，避免打印出空白图表
+    await nextTick()
+    setTimeout(() => window.print(), 400)
+  }
 })
 </script>
 
@@ -484,6 +654,118 @@ onMounted(() => {
 .muted {
   color: var(--text-secondary);
   font-size: 13px;
+}
+
+/* ------------------------------ 学习路线 ------------------------------ */
+
+.study-sub {
+  font-size: 12px;
+}
+
+.study-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-md);
+}
+
+.study-card {
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  background: var(--bg-hover);
+}
+
+.study-card--top {
+  border-color: var(--color-danger);
+  border-width: 1px;
+  box-shadow: 0 0 0 1px var(--color-danger);
+}
+
+.study-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.study-card__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.study-dim {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.study-score {
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.study-card__meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.study-progress-text {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.study-goal {
+  margin: 12px 0;
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--text-regular);
+}
+
+.study-goal strong {
+  color: var(--text-primary);
+}
+
+.study-steps {
+  margin-top: 8px;
+}
+
+.study-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--text-regular);
+}
+
+.study-step .is-done {
+  color: var(--text-secondary);
+  text-decoration: line-through;
+}
+
+/* ------------------------------ 暗色补齐 ------------------------------ */
+
+/* 等级徽章：浅色下用浅绿/浅黄/浅红底，暗色下改半透明同色底避免白底死角 */
+:global(html.dark) .level-good {
+  background: rgba(22, 163, 74, 0.18);
+  color: #4ade80;
+}
+:global(html.dark) .level-mid {
+  background: rgba(217, 119, 6, 0.18);
+  color: #fbbf24;
+}
+:global(html.dark) .level-bad {
+  background: rgba(220, 38, 38, 0.18);
+  color: #f87171;
+}
+
+/* 逐题卡片：浅色用极浅底，暗色随卡片表面 */
+:global(html.dark) .q-card {
+  background: var(--bg-card);
 }
 
 @media (max-width: 1024px) {
