@@ -19,6 +19,7 @@ import com.aimeeting.interview.common.convention.result.PageQuery;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -98,8 +99,9 @@ public class AdminServiceImpl implements AdminService {
     public SessionTrendResp sessionTrend(int days) {
         int d = days < 1 ? 7 : Math.min(days, 90);
         LocalDate today = LocalDate.now();
+        LocalDateTime start = today.minusDays(d).atStartOfDay();
         List<String> dates = new ArrayList<>();
-        Map<String, TrendRow> rowMap = adminMapper.sessionTrend(d).stream()
+        Map<String, TrendRow> rowMap = adminMapper.sessionTrend(start).stream()
                 .collect(Collectors.toMap(TrendRow::getDay, r -> r, (a, b) -> a));
         List<Long> counts = new ArrayList<>();
         List<Double> avgScores = new ArrayList<>();
@@ -112,7 +114,7 @@ public class AdminServiceImpl implements AdminService {
         }
 
         Map<String, Long> dirCount = new LinkedHashMap<>();
-        for (String dirs : adminMapper.recentDirections(d)) {
+        for (String dirs : adminMapper.recentDirections(start)) {
             if (dirs == null || dirs.isBlank()) {
                 continue;
             }

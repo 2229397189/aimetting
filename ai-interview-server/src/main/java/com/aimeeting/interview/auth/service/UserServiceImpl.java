@@ -6,16 +6,21 @@ import com.aimeeting.interview.auth.api.io.resp.UserProfileResp;
 import com.aimeeting.interview.auth.api.io.resp.UserStatsResp;
 import com.aimeeting.interview.auth.dao.entity.UserDO;
 import com.aimeeting.interview.auth.dao.entity.UserProfileDO;
+import com.aimeeting.interview.auth.dao.mapper.StatsMapper;
 import com.aimeeting.interview.auth.dao.repository.UserProfileRepository;
 import com.aimeeting.interview.auth.dao.repository.UserRepository;
 import com.aimeeting.interview.auth.domain.PasswordPolicy;
 import com.aimeeting.interview.common.convention.errorcode.BaseErrorCode;
 import com.aimeeting.interview.common.convention.exception.ClientException;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -37,6 +42,8 @@ public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
 
     private final UserProfileRepository userProfileRepository;
+
+    private final StatsMapper statsMapper;
 
     @Override
     public void initProfile(Long userId) {
@@ -140,23 +147,40 @@ public class UserServiceImpl implements UserService {
     @Override
     public UserStatsResp getStats(Long userId) {
         requireUser(userId);
-        // M1 阶段面试相关表尚未落盘，返回结构完整的 0 值；M4/M7 接入后由真实聚合替换
-        List<UserStatsResp.DailyStat> trend = new ArrayList<>(TREND_DAYS);
+
         LocalDate today = LocalDate.now();
+        LocalDateTime start = today.minusDays(TREND_DAYS - 1).atStartOfDay();
+
+        Long totalSessions = statsMapper.countSessions(userId);
+        Long completedSessions = statsMapper.countCompletedSessions(userId);
+        BigDecimal averageScore = statsMapper.averageScore(userId).setScale(1, RoundingMode.HALF_UP);
+        Long totalQuestions = statsMapper.countAnswers(userId);
+        Long resumeCount = statsMapper.countResumes(userId);
+
+        Map<String, StatsMapper.TrendRow> rowMap = statsMapper.dailyTrend(userId, start).stream()
+                .collect(Collectors.toMap(r -> r.day, r -> r));
+        List<UserStatsResp.TrendPoint> trend = new ArrayList<>(TREND_DAYS);
         for (int i = TREND_DAYS - 1; i >= 0; i--) {
             LocalDate date = today.minusDays(i);
-            trend.add(UserStatsResp.DailyStat.builder()
-                    .date(date.format(DateTimeFormatter.ISO_LOCAL_DATE))
-                    .sessionCount(0L)
-                    .averageScore(BigDecimal.ZERO)
+            String day = date.format(DateTimeFormatter.ISO_LOCAL_DATE);
+            StatsMapper.TrendRow row = rowMap.get(day);
+            Long count = row == null || row.cnt == null ? 0L : row.cnt;
+            BigDecimal score = row == null || row.avgScore == null
+                    ? BigDecimal.ZERO : row.avgScore.setScale(1, RoundingMode.HALF_UP);
+            trend.add(UserStatsResp.TrendPoint.builder()
+                    .date(day)
+                    .count(count)
+                    .score(score)
                     .build());
         }
+
         return UserStatsResp.builder()
-                .totalSessions(0L)
-                .completedSessions(0L)
-                .averageScore(BigDecimal.ZERO.setScale(1))
-                .totalAnswers(0L)
-                .recent7Days(trend)
+                .totalSessions(totalSessions)
+                .completedSessions(completedSessions)
+                .averageScore(averageScore)
+                .totalQuestions(totalQuestions)
+                .resumeCount(resumeCount)
+                .trend(trend)
                 .build();
     }
 

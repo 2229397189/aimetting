@@ -10,9 +10,10 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * 个人数据概览（U-08）：累计面试场次、完成场次、平均分、最近 7 日趋势。
+ * 个人数据概览（U-08）：累计面试场次、完成场次、平均分、累计答题数、简历数以及近期趋势。
  *
- * <p>M1 阶段面试相关表尚未落盘，统一返回 0 值；M4/M7 完成后由真实聚合填充。
+ * <p>字段与前端 {@code UserStats} 严格一致：{@code totalQuestions} 对应累计答题数，
+ * {@code resumeCount} 来自简历表，{@code trend} 为每日场次与平均分趋势。
  */
 @Data
 @Builder
@@ -32,20 +33,23 @@ public class UserStatsResp implements Serializable {
     private BigDecimal averageScore;
 
     /** 累计答题数。 */
-    private Long totalAnswers;
+    private Long totalQuestions;
 
-    /** 最近 7 日趋势。 */
+    /** 简历数。 */
+    private Long resumeCount;
+
+    /** 近期趋势（默认 7 日）。 */
     @Builder.Default
-    private List<DailyStat> recent7Days = new ArrayList<>();
+    private List<TrendPoint> trend = new ArrayList<>();
 
     /**
-     * 单日统计项。
+     * 单日趋势项，与前端 {@code TrendPoint} 一致。
      */
     @Data
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class DailyStat implements Serializable {
+    public static class TrendPoint implements Serializable {
 
         private static final long serialVersionUID = 1L;
 
@@ -53,9 +57,9 @@ public class UserStatsResp implements Serializable {
         private String date;
 
         /** 当日场次。 */
-        private Long sessionCount;
+        private Long count;
 
-        /** 当日平均分。 */
-        private BigDecimal averageScore;
+        /** 当日平均分，保留 1 位小数。 */
+        private BigDecimal score;
     }
 }

@@ -2,6 +2,7 @@ package com.aimeeting.interview.admin.dao.mapper;
 
 import com.aimeeting.interview.admin.dao.entity.TrendRow;
 import com.aimeeting.interview.admin.dao.entity.UserReadDO;
+import java.time.LocalDateTime;
 import java.util.List;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
@@ -56,13 +57,13 @@ public interface AdminMapper {
     @Select("SELECT COUNT(*) FROM t_session_question WHERE deleted = 0")
     long countQuestions();
 
-    @Select("SELECT CAST(DATE(create_time) AS CHAR) AS day, COUNT(*) AS cnt, AVG(score) AS avg_score "
+    @Select("SELECT DATE(create_time) AS `day`, COUNT(*) AS cnt, AVG(score) AS avg_score "
             + "FROM t_interview_session "
-            + "WHERE deleted = 0 AND create_time >= DATE_SUB(CURDATE(), INTERVAL #{days} DAY) "
-            + "GROUP BY DATE(create_time) ORDER BY day")
-    List<TrendRow> sessionTrend(@Param("days") int days);
+            + "WHERE deleted = 0 AND create_time >= #{start} "
+            + "GROUP BY DATE(create_time) ORDER BY `day`")
+    List<TrendRow> sessionTrend(@Param("start") LocalDateTime start);
 
     @Select("SELECT directions FROM t_interview_session "
-            + "WHERE deleted = 0 AND create_time >= DATE_SUB(CURDATE(), INTERVAL #{days} DAY)")
-    List<String> recentDirections(@Param("days") int days);
+            + "WHERE deleted = 0 AND create_time >= #{start}")
+    List<String> recentDirections(@Param("start") LocalDateTime start);
 }
