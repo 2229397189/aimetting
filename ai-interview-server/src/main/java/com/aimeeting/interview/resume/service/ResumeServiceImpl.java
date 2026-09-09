@@ -15,6 +15,7 @@ import com.aimeeting.interview.common.convention.result.PageQuery;
 import com.aimeeting.interview.common.idempotent.IdempotencyService;
 import com.aimeeting.interview.common.idempotent.IdempotentStage;
 import com.aimeeting.interview.common.idempotent.TryStartResult;
+import com.aimeeting.interview.ai.parser.AiJsonParser;
 import com.aimeeting.interview.common.util.JsonUtil;
 import com.aimeeting.interview.common.util.Md5Util;
 import com.aimeeting.interview.resume.api.io.req.ResumeParseReq;
@@ -114,20 +115,37 @@ public class ResumeServiceImpl implements ResumeService {
         resumeDO.setRawText(content);
         resumeDO.setFileUrl(fileUrl);
 
-        try {
-            String raw = aiGuardService.execute(AiStage.RESUME_PARSE,
-                    "resume:" + userId + ":" + Md5Util.md5Safe(content),
-                    userId,
-                    buildResumeRequest(content),
-                    AiTextResult::getContent);
-            JsonNode root = JsonUtil.parse(raw, JsonNode.class);
-            if (root == null || !root.isObject()) {
-                throw new ClientException("AI 返回无法解析", BaseErrorCode.SERVICE_ERROR);
+        // AI 解析：修复 + 解析失败自动重试 2 次。deepseek 推理模型偶发无视 response_format=json_object、
+        // 在 content 里输出叙述文字（如"我们需要解析…"）。每次尝试先做 JSON 修复（剥离前后缀文字 /
+        // 围栏后取最外层 JSON 对象），失败则以独立单飞键重试；最多尝试 3 次（首次 + 重试 2 次）
+        // 仍失败才降级 RULE。
+        String baseKey = "resume:" + userId + ":" + Md5Util.md5Safe(content);
+        String repairedJson = null;
+        for (int attempt = 1; attempt <= 3 && repairedJson == null; attempt++) {
+            String sfKey = attempt == 1 ? baseKey : baseKey + ":retry" + attempt;
+            try {
+                String raw = aiGuardService.execute(AiStage.RESUME_PARSE, sfKey, userId,
+                        buildResumeRequest(content), AiTextResult::getContent);
+                repairedJson = AiJsonParser.tryRepairJson(raw);
+                if (repairedJson == null) {
+                    log.warn("[Resume] AI 第 {} 次返回非合法 JSON，准备重试", attempt);
+                }
+            } catch (ClientException ce) {
+                throw ce;
+            } catch (Exception e) {
+                log.warn("[Resume] AI 调用异常(第 {} 次): {}", attempt, e.getMessage());
             }
+        }
+
+        if (repairedJson == null) {
+            log.warn("[Resume] AI 解析失败（已重试），降级 RULE");
+            applyRuleFallback(resumeDO, content);
+        } else {
+            JsonNode root = AiJsonParser.parse(repairedJson);
             if (root.has("isResume") && !root.get("isResume").asBoolean(true)) {
                 throw new ClientException("内容看起来不是简历，请检查后重试", BaseErrorCode.NOT_RESUME_TEXT);
             }
-            ResumeParsed parsed = ResumeParsed.fromJson(raw);
+            ResumeParsed parsed = ResumeParsed.fromJson(repairedJson);
             resumeDO.setParsedJson(JsonUtil.toJson(parsed));
             resumeDO.setParsedBy("AI");
             JsonNode scoreNode = root.get("score");
@@ -140,11 +158,6 @@ public class ResumeServiceImpl implements ResumeService {
                 suggestions = defaultSuggestions();
             }
             resumeDO.setSuggestions(JsonUtil.toJson(suggestions));
-        } catch (ClientException ce) {
-            throw ce;
-        } catch (Exception e) {
-            log.warn("[Resume] AI 解析失败，降级 RULE: {}", e.getMessage());
-            applyRuleFallback(resumeDO, content);
         }
 
         resumeMapper.insert(resumeDO);

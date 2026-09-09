@@ -167,6 +167,7 @@ public class AnswerServiceImpl implements AnswerService {
             ans.setHighlights(toJson(result.getHighlights()));
             ans.setGaps(toJson(result.getGaps()));
             ans.setImprovedAnswer(result.getImprovedAnswer());
+            ans.setFollowUpQuestion(result.getFollowUpQuestion());
             ans.setEvaluatedBy(result.getEvaluatedBy() == null ? null : result.getEvaluatedBy().name());
             answerMapper.updateById(ans);
 

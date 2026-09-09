@@ -64,12 +64,13 @@ public class MockAiProvider implements AiProvider {
                         + " 的核心要点\",\"referencePoints\":[\"概念定义\",\"适用场景\",\"与其它方案的对比\"],"
                         + "\"analysis\":\"（Mock 生成，未接入真实大模型）\"}";
             case EVALUATE:
-                return "这是一道考察基础理解的题目。\n===JSON===\n"
-                        + "{\"score\":78,\"highlights\":[\"答出了核心概念\"],\"gaps\":[\"缺少对比分析\"],"
-                        + "\"needFollowUp\":true,\"followUpQuestion\":\"能否进一步说明它和替代方案的差异？\"}";
+                return "{\"comment\":\"这是一道考察基础理解的题目。整体回答抓住了核心概念，但缺少与替代方案的对比分析，建议补充一层权衡。\","
+                        + "\"score\":78,\"highlights\":[\"答出了核心概念\"],\"gaps\":[\"缺少对比分析\"],"
+                        + "\"needFollowUp\":true,\"followUpQuestion\":\"能否进一步说明它和替代方案的差异？\",\"improvedAnswer\":\"\"}";
             case FOLLOW_UP:
-                return "{\"score\":82,\"highlights\":[\"补充了对比维度\"],\"gaps\":[\"可再深入\"],"
-                        + "\"needFollowUp\":false,\"followUpQuestion\":\"\"}";
+                return "{\"comment\":\"（Mock）追问补充回答评估完成，已补充对比维度。\",\"score\":82,"
+                        + "\"highlights\":[\"补充了对比维度\"],\"gaps\":[\"可再深入\"],"
+                        + "\"needFollowUp\":false,\"followUpQuestion\":\"\",\"improvedAnswer\":\"\"}";
             case RESUME:
                 return "{\"skills\":[\"Java\",\"Spring Boot\",\"MySQL\"],\"summary\":\"（Mock 解析）具备后端开发基础。\"}";
             case REPORT:

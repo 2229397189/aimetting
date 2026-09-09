@@ -58,7 +58,7 @@ LOG="$DEPLOY_DIR/app.log"
 nohup setsid java -jar "$JAR" \
   --server.port=$APP_PORT \
   --spring.profiles.active=h2 \
-  --ai-interview.ai.provider=mock \
+  --ai-interview.ai.provider=deepseek \
   --ai-interview.security.jwt-secret="$JWT_SECRET" \
   > "$LOG" 2>&1 &
 

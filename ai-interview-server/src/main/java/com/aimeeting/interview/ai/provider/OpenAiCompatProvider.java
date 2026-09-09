@@ -112,10 +112,14 @@ public class OpenAiCompatProvider implements AiProvider {
                             return;
                         }
                         JsonNode delta = node.path("choices").path(0).path("delta").path("content");
-                        if (!delta.isMissingNode() && !delta.isNull()) {
+                        JsonNode reasoning = node.path("choices").path(0).path("delta").path("reasoning_content");
+                        if (!delta.isMissingNode() && !delta.isNull() && !delta.asText().isEmpty()) {
                             String piece = delta.asText();
                             full.append(piece);
                             listener.onDelta(piece);
+                        } else if (!reasoning.isMissingNode() && !reasoning.isNull() && !reasoning.asText().isEmpty()) {
+                            // 推理模型可能把正文放在 reasoning_content：仅聚合用于最终解析，不实时透传
+                            full.append(reasoning.asText());
                         }
                         JsonNode usage = node.path("usage");
                         if (!usage.isMissingNode()) {
@@ -171,7 +175,12 @@ public class OpenAiCompatProvider implements AiProvider {
     }
 
     private String extractContent(JsonNode root) {
-        return root.path("choices").path(0).path("message").path("content").asText("");
+        String content = root.path("choices").path(0).path("message").path("content").asText("");
+        if (content == null || content.isBlank()) {
+            // 推理模型（如 deepseek-reasoner）正文可能在 reasoning_content
+            content = root.path("choices").path(0).path("message").path("reasoning_content").asText("");
+        }
+        return content == null ? "" : content;
     }
 
     private String modelOf(AiRequest request) {

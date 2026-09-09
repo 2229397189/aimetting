@@ -161,6 +161,7 @@ CREATE TABLE IF NOT EXISTS t_session_answer (
   highlights         TEXT        DEFAULT NULL COMMENT 'JSON 数组',
   gaps               TEXT        DEFAULT NULL COMMENT 'JSON 数组',
   improved_answer    TEXT        DEFAULT NULL COMMENT '改进后参考答案',
+  follow_up_question TEXT        DEFAULT NULL COMMENT 'AI 追问问题',
   evaluated_by       VARCHAR(16) DEFAULT NULL COMMENT 'AI|RULE',
   follow_up_count    INT         NOT NULL DEFAULT 0,
   skipped            TINYINT(1)  NOT NULL DEFAULT 0,
@@ -234,6 +235,15 @@ CREATE TABLE IF NOT EXISTS t_interview_report (
   UNIQUE KEY uk_session (session_id),
   KEY idx_user_time (user_id, create_time)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='面试报告';
+
+-- 历史库表增量迁移：仅当列不存在时添加 follow_up_question（MySQL 不支持 ADD COLUMN IF NOT EXISTS）
+SET @db = DATABASE();
+SET @cnt = (SELECT COUNT(*) FROM information_schema.columns
+            WHERE table_schema = @db AND table_name = 't_session_answer' AND column_name = 'follow_up_question');
+SET @sql = IF(@cnt = 0, 'ALTER TABLE t_session_answer ADD COLUMN follow_up_question TEXT DEFAULT NULL COMMENT ''AI 追问问题''', 'SELECT 1');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
 
 -- 10. 字典表（M8，方向/难度展示）

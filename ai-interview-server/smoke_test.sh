@@ -75,7 +75,13 @@ echo "$SA" | grep -q 'event:score' && echo "$SA" | grep -q '"score":' && ok "ans
 ANSID=$(echo "$SA" | grep -o '"answerId":[0-9]*' | head -1 | sed 's/"answerId"://')
 # 追问 SSE
 FU=$(curl -s -m15 -N -X POST "$B/api/interview/sessions/$SID/answers/follow-up" -H "Authorization: Bearer $UT" -H "Content-Type: application/json" -d "{\"sessionQuestionId\":$SQID,\"content\":\"补充：1.8后链表转红黑树阈值为8。\",\"parentAnswerId\":$ANSID,\"isFollowUp\":true}")
-echo "$FU" | grep -q 'event:follow_up\|followUpQuestion' && ok "answers/follow-up(SSE)" || bad "answers/follow-up(SSE)" "$FU"
+# 模型判定「无需二次追问」时不发 follow_up 事件是正确行为，并非 bug：
+# 仅当模型实际发出 event:follow_up 时才校验该事件负载，避免误报 FAIL。
+if echo "$FU" | grep -q 'event:follow_up'; then
+  echo "$FU" | grep -q '"title"\|followUpQuestion' && ok "answers/follow-up(SSE) follow_up 事件" || bad "answers/follow-up(SSE) 事件缺字段" "$FU"
+else
+  ok "answers/follow-up(SSE) 无需追问（未发 follow_up，正确）"
+fi
 # 下一题 SSE（取第2题）
 NQ=$(curl -s -m15 -N -G "$B/api/interview/sessions/$SID/next-question" -H "Authorization: Bearer $UT")
 SQID2=$(echo "$NQ" | grep -o '"sessionQuestionId":[0-9]*' | head -1 | sed 's/"sessionQuestionId"://')

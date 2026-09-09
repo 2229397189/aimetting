@@ -30,6 +30,10 @@ import org.springframework.stereotype.Service;
 /**
  * 评分服务实现：AI 流式评分 + 规则引擎降级（BR-13）。
  *
+ * <p>AI 评分使用纯 JSON 模式（{@code response_format=json_object}）：模型只返回结构化 JSON，
+ * 其中 {@code comment} 字段即面向用户的点评正文。增量阶段只聚合 JSON 片段，不在前端实时透传
+ * 原始 JSON；评分完成时统一把 {@code comment} 作为点评下发，保证前端展示的是可读文本而非 JSON。</p>
+ *
  * <p>降级触发条件：AI 调用失败（超时 / 熔断 / 舱壁 / 网络）或返回内容非法（非 JSON / 分数越界）。
  * 降级时 {@code evaluatedBy=RULE}、{@code degraded=true}，HTTP 仍为 200。
  */
@@ -38,7 +42,7 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class EvaluationServiceImpl implements EvaluationService {
 
-    /** 改进答案的触发分数（Δ1：低于 80 分给出改进参考答案）。 */
+    /** 改进答案的触发分数（低于 80 分给出改进参考答案）。 */
     private static final int IMPROVE_THRESHOLD = 80;
 
     private final AiGuardService aiGuardService;
@@ -55,75 +59,80 @@ public class EvaluationServiceImpl implements EvaluationService {
                 .temperature(aiProperties.getTemperature())
                 .maxTokens(aiProperties.getMaxTokens())
                 .model(aiProperties.modelFor(AiBizType.EVALUATE))
-                .jsonMode(false)
+                .jsonMode(true)
                 .build();
 
         String singleFlightKey = "eva:" + ctx.getSessionId() + ":" + ctx.getSessionQuestionId() + ":"
                 + Md5Util.md5Safe(ctx.getAnswer()) + "@" + Md5Util.md5Safe(ctx.getQuestionTitle())
                 + (ctx.isFollowUp() ? ":fu" : "");
 
-        StringBuilder streamedBody = new StringBuilder();
-        AtomicReference<AiTextResult> resultRef = new AtomicReference<>();
-        AtomicReference<Throwable> errorRef = new AtomicReference<>();
-        CountDownLatch latch = new CountDownLatch(1);
         long waitMillis = aiProperties.stageTimeoutMillis(AiBizType.EVALUATE) + 30_000L;
 
-        try {
-            aiGuardService.executeStream(AiStage.EVALUATION, singleFlightKey, userId, request,
-                    new AiStreamListener() {
-                        @Override
-                        public void onDelta(String delta) {
-                            if (delta == null || delta.isEmpty()) {
-                                return;
-                            }
-                            streamedBody.append(delta);
-                            if (sink != null) {
-                                sink.acceptDelta(delta);
-                            }
-                        }
-
-                        @Override
-                        public void onComplete(AiTextResult result) {
-                            resultRef.set(result);
-                            latch.countDown();
-                        }
-
-                        @Override
-                        public void onError(Throwable t) {
-                            errorRef.set(t);
-                            latch.countDown();
-                        }
-                    });
-            latch.await(waitMillis, TimeUnit.MILLISECONDS);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        } catch (Exception e) {
-            log.warn("[Evaluation] 评分调用异常: {}", e.getMessage());
-        }
-
-        AiTextResult result = resultRef.get();
-        if (result != null) {
+        // 业务级保险：AI 偶发返回无法解析 JSON 或瞬时失败时，自动重试一次再降级，
+        // 避免直接走 RULE 造成偶发降级（与 resume 解析同源风险）。
+        EvaluationResult parsed = null;
+        for (int attempt = 1; attempt <= 2 && parsed == null; attempt++) {
+            String sfKey = attempt == 1 ? singleFlightKey : singleFlightKey + ":retry";
+            AtomicReference<AiTextResult> resultRef = new AtomicReference<>();
+            AtomicReference<Throwable> errorRef = new AtomicReference<>();
+            CountDownLatch latch = new CountDownLatch(1);
             try {
-                EvaluationResult parsed = fromAi(result.getContent(), streamedBody.toString(), ctx);
-                finish(sink);
-                return parsed;
+                aiGuardService.executeStream(AiStage.EVALUATION, sfKey, userId, request,
+                        new AiStreamListener() {
+                            @Override
+                            public void onDelta(String delta) {
+                                // 纯 JSON 模式：增量仅为 JSON 片段，不实时透传为点评，结束后统一下发 comment
+                            }
+
+                            @Override
+                            public void onComplete(AiTextResult result) {
+                                resultRef.set(result);
+                                latch.countDown();
+                            }
+
+                            @Override
+                            public void onError(Throwable t) {
+                                errorRef.set(t);
+                                latch.countDown();
+                            }
+                        });
+                latch.await(waitMillis, TimeUnit.MILLISECONDS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
             } catch (Exception e) {
-                log.warn("[Evaluation] AI 返回内容非法，转规则降级, sessionId={}, msg={}",
-                        ctx.getSessionId(), e.getMessage());
+                log.warn("[Evaluation] 评分调用异常(第 {} 次): {}", attempt, e.getMessage());
             }
-        } else {
-            log.warn("[Evaluation] AI 评分失败，转规则降级, sessionId={}, err={}",
-                    ctx.getSessionId(), errorRef.get() == null ? "timeout" : errorRef.get().getMessage());
+            AiTextResult result = resultRef.get();
+            if (result == null) {
+                log.warn("[Evaluation] AI 评分失败(第 {} 次), sessionId={}, err={}",
+                        attempt, ctx.getSessionId(), errorRef.get() == null ? "timeout" : errorRef.get().getMessage());
+                continue;
+            }
+            try {
+                parsed = fromAi(result.getContent(), ctx);
+            } catch (Exception e) {
+                log.warn("[Evaluation] AI 返回内容非法(第 {} 次), sessionId={}, msg={}",
+                        attempt, ctx.getSessionId(), e.getMessage());
+            }
         }
-        EvaluationResult degraded = fallback(ctx, sink, streamedBody.toString());
+
+        if (parsed != null) {
+            // 统一下发 AI 点评正文（纯 JSON 中的 comment 字段）
+            if (sink != null && parsed.getComment() != null && !parsed.getComment().isBlank()) {
+                sink.acceptDelta(parsed.getComment());
+            }
+            finish(sink);
+            return parsed;
+        }
+        EvaluationResult degraded = fallback(ctx, sink);
         finish(sink);
         return degraded;
     }
 
     /**
-     * 解析 AI 输出的结构化 JSON 段。
+     * 解析 AI 输出的结构化 JSON：纯 JSON 模式，comment 为点评正文，score 等字段同前。
      */
-    private EvaluationResult fromAi(String json, String streamedBody, EvaluationContext ctx) {
+    private EvaluationResult fromAi(String json, EvaluationContext ctx) {
         JsonNode node = AiJsonParser.parse(json);
         int score = AiOutputValidator.scoreInRange(node, "score");
         List<String> highlights = toStringArray(node, "highlights");
@@ -134,8 +143,10 @@ public class EvaluationServiceImpl implements EvaluationService {
         if (improvedAnswer.isBlank() && score < IMPROVE_THRESHOLD) {
             improvedAnswer = buildImprovedAnswer(ctx);
         }
-        String comment = streamedBody == null || streamedBody.isBlank()
-                ? "AI 评分完成，综合得分 " + score + " 分。" : streamedBody;
+        String comment = node.path("comment").asText("");
+        if (comment == null || comment.isBlank()) {
+            comment = "AI 评分完成，综合得分 " + score + " 分。";
+        }
 
         return EvaluationResult.builder()
                 .score(score)
@@ -153,17 +164,15 @@ public class EvaluationServiceImpl implements EvaluationService {
     /**
      * 规则引擎降级评分。
      */
-    private EvaluationResult fallback(EvaluationContext ctx, AiStreamSink sink, String streamedBody) {
+    private EvaluationResult fallback(EvaluationContext ctx, AiStreamSink sink) {
         RuleEvaluator.RuleScore ruleScore = RuleEvaluator.fallbackEvaluate(ctx.getReferencePoints(), ctx.getAnswer());
-        if (streamedBody == null || streamedBody.isBlank()) {
-            if (sink != null) {
-                sink.acceptDelta(ruleScore.comment);
-            }
+        if (sink != null) {
+            sink.acceptDelta(ruleScore.comment);
         }
         String improvedAnswer = ruleScore.score < IMPROVE_THRESHOLD ? buildImprovedAnswer(ctx) : "";
         return EvaluationResult.builder()
                 .score(ruleScore.score)
-                .comment(streamedBody == null || streamedBody.isBlank() ? ruleScore.comment : streamedBody)
+                .comment(ruleScore.comment)
                 .highlights(ruleScore.highlights)
                 .gaps(ruleScore.gaps)
                 .needFollowUp(ruleScore.needFollowUp

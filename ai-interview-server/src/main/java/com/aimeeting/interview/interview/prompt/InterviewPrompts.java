@@ -5,8 +5,9 @@ import java.util.List;
 /**
  * 面试域 Prompt 构造（架构文档第 7 章）。
  *
- * <p>评分 prompt 是唯一使用「正文 + {@code ===JSON===}」分段的场景：
- * 分隔符之前是面向用户的 Markdown 点评（流式打字机），之后是严格 JSON 结构化结果。
+ * <p>评分与出题统一走「纯 JSON 模式」：请求带 {@code response_format=json_object}，
+ * 模型只返回严格 JSON 对象；评分结果的面向用户点评正文放在 JSON 的 {@code comment} 字段里，
+ * 由上层在评分完成后统一下发给前端，避免把原始 JSON 透传为点评。
  */
 public final class InterviewPrompts {
 
@@ -68,9 +69,14 @@ public final class InterviewPrompts {
      * @return 系统提示
      */
     public static String evaluateSystem() {
-        return "你是一位严谨的技术面试官，负责给候选人的回答打分。"
-                + "先输出面向候选人的中文点评正文（Markdown，120-240 字，包含亮点与改进建议），"
-                + "然后换行输出分隔符 ===JSON===，再输出严格 JSON 结构化结果。" + STRICT_JSON_RULE;
+        return "你是一位严谨的技术面试官，负责给候选人的回答打分并给出点评。"
+                + "你必须且只能输出一个合法 JSON 对象，不要输出任何解释、寒暄或前后缀文字，不要使用 Markdown 代码块围栏。"
+                + "JSON 字段定义："
+                + "comment(字符串, 面向候选人的中文点评正文, 120-240 字, 含亮点与改进建议), "
+                + "score(整数 0-100), highlights(字符串数组, 回答亮点), gaps(字符串数组, 不足与改进点), "
+                + "needFollowUp(布尔, 是否需要继续追问), followUpQuestion(字符串, 需要追问时的具体问题, 不需要则空字符串), "
+                + "improvedAnswer(字符串, 改进后的参考答案, 可空)。"
+                + "所有字符串使用双引号，不要尾随逗号，中文使用 UTF-8 不要转义。";
     }
 
     /**
@@ -92,11 +98,10 @@ public final class InterviewPrompts {
             sb.append("以下是候选人对追问的补充回答，请重点评估补充的深度与准确性。\n");
         }
         sb.append("候选人回答：").append(nullToEmpty(answer)).append("\n");
-        sb.append("请按格式输出：点评正文 + 换行 + ===JSON=== + "
-                + "{\"score\":78,\"highlights\":[\"...\"],\"gaps\":[\"...\"],\"needFollowUp\":true,"
-                + "\"followUpQuestion\":\"追问问题\",\"improvedAnswer\":\"改进后的参考答案\"}。"
-                + "score 为 0-100 整数；needFollowUp 表示是否需要继续追问。"
-                + (isFollowUp ? "追问场景下 needFollowUp 一般为 false。" : ""));
+        sb.append("请严格按系统提示的 JSON 结构输出：必须包含 comment / score / highlights / gaps / "
+                + "needFollowUp / followUpQuestion / improvedAnswer 七个字段。"
+                + "score 为 0-100 整数；needFollowUp 表示是否需要继续追问"
+                + (isFollowUp ? "（追问场景下一般为 false）。" : "；若 needFollowUp 为 true，followUpQuestion 必须给出具体追问问题。"));
         return sb.toString();
     }
 

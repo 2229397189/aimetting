@@ -72,6 +72,9 @@ CREATE TABLE IF NOT EXISTS t_question (
 --   M4     状态流水：   t_session_event
 --   M5     简历：       t_resume
 --   M6     报告：       t_interview_report
+-- ----------------------------------------------------------------------------
+-- 0. 历史库表增量迁移（幂等，仅当列不存在时添加）
+ALTER TABLE t_session_answer ADD COLUMN IF NOT EXISTS follow_up_question VARCHAR(2000) DEFAULT NULL;
 -- ============================================================================
 
 
@@ -149,6 +152,7 @@ CREATE TABLE IF NOT EXISTS t_session_answer (
   highlights         VARCHAR(2000) DEFAULT NULL,
   gaps               VARCHAR(2000) DEFAULT NULL,
   improved_answer    VARCHAR(4000) DEFAULT NULL,
+  follow_up_question VARCHAR(2000) DEFAULT NULL,
   evaluated_by       VARCHAR(16)  DEFAULT NULL,
   follow_up_count    INT          NOT NULL DEFAULT 0,
   skipped            INT          NOT NULL DEFAULT 0,

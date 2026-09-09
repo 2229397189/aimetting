@@ -50,6 +50,9 @@ public class SessionAnswerDO {
     /** Δ1：改进后的参考答案。 */
     private String improvedAnswer;
 
+    /** AI 追问问题（纯 JSON 评分结果中的 followUpQuestion，原答案行有意义）。 */
+    private String followUpQuestion;
+
     /** 评分来源：AI | RULE。 */
     private String evaluatedBy;
 
