@@ -154,16 +154,36 @@
             <span class="draft-tip">{{ draftTip }}</span>
           </div>
 
-          <el-input
-            v-model="answer"
-            type="textarea"
-            :rows="9"
-            :maxlength="answerMaxLength"
-            placeholder="请尽量结构化作答：先给结论，再讲原理，最后结合项目举例（10 ~ 5000 字）"
-            resize="vertical"
-            :disabled="submitting || isPaused"
-            @input="onAnswerInput"
-          />
+          <el-tabs v-model="answerMode" class="answer-tabs" stretch>
+            <el-tab-pane label="文本作答" name="text">
+              <el-input
+                v-model="answer"
+                type="textarea"
+                :rows="9"
+                :maxlength="answerMaxLength"
+                placeholder="请尽量结构化作答：先给结论，再讲原理，最后结合项目举例（10 ~ 5000 字）"
+                resize="vertical"
+                :disabled="submitting || isPaused"
+                @input="onAnswerInput"
+              />
+            </el-tab-pane>
+            <el-tab-pane name="code">
+              <template #label>
+                <span class="answer-tabs__code-label">
+                  代码作答
+                  <el-tag size="small" type="info" effect="plain">{{ langLabel }}</el-tag>
+                </span>
+              </template>
+              <CodeEditor
+                v-model="answer"
+                :language="answerLang"
+                :maxlength="answerMaxLength"
+                :disabled="submitting || isPaused"
+                placeholder="在此粘贴或编写你的解题代码（提交后作为答案内容参与 AI 评分）"
+                @input="onAnswerInput"
+              />
+            </el-tab-pane>
+          </el-tabs>
 
           <div class="answer-foot">
             <span class="char-count" :class="{ danger: answerLength < answerMinLength }">
@@ -312,6 +332,8 @@ import StreamText from '@/components/StreamText/index.vue'
 import MarkdownRender from '@/components/MarkdownRender/index.vue'
 import DegradedTip from '@/components/DegradedTip/index.vue'
 import PageLoading from '@/components/PageLoading/index.vue'
+import CodeEditor from '@/components/CodeEditor/index.vue'
+import type { EditorLang } from '@/components/CodeEditor/index.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -357,6 +379,25 @@ const maxFollowUp = computed<number>(() => configStore.maxFollowUp)
 
 const answerLength = computed<number>(() => Array.from(answer.value.trim()).length)
 const followUpLength = computed<number>(() => Array.from(followUpAnswer.value.trim()).length)
+
+/** 作答模式：文本 or 代码 */
+const answerMode = ref<'text' | 'code'>('text')
+
+/** 代码模式下的高亮语言：与面试方向联动 */
+const answerLang = computed<EditorLang>(() => {
+  const dirs = session.value?.directions || []
+  const dir = dirs[0]
+  if (dir === 'PYTHON') return 'python'
+  if (dir === 'FRONTEND') return 'javascript'
+  // JAVA_BACKEND 及其它技术方向默认 Java
+  return 'java'
+})
+
+/** 语言中文名（用于代码 Tab 标签展示） */
+const langLabel = computed<string>(() => {
+  const map: Record<EditorLang, string> = { java: 'Java', python: 'Python', javascript: 'JavaScript' }
+  return map[answerLang.value]
+})
 
 const isPaused = computed<boolean>(() => session.value?.status === 'PAUSED')
 const busy = computed<boolean>(() => submitting.value || streaming.value)
@@ -1088,6 +1129,20 @@ onBeforeUnmount(() => {
   gap: 12px;
   margin-top: 12px;
   flex-wrap: wrap;
+}
+
+.answer-tabs {
+  margin-top: 4px;
+}
+
+.answer-tabs :deep(.el-tabs__header) {
+  margin-bottom: 12px;
+}
+
+.answer-tabs__code-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .answer-foot__right {
