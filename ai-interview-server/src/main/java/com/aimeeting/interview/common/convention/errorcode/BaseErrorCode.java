@@ -8,7 +8,7 @@ import lombok.Getter;
  *
  * <p>完整覆盖：
  * <ul>
- *   <li>A 类（客户端）：A0001 / A0100~A0104 / A0201~A0203 / A0301 / A0401~A0403 / A0501~A0502</li>
+ *   <li>A 类（客户端）：A0001 / A0100~A0104 / A0201~A0203 / A0301 / A0401~A0404 / A0501~A0502</li>
  *   <li>B 类（系统）：B0001 / B0101 / B0103 / B0301~B0303</li>
  *   <li>C 类（远程 AI）：C0001 / C0501~C0504</li>
  * </ul>
@@ -37,6 +37,7 @@ public enum BaseErrorCode implements IErrorCode {
     NOT_RESUME_TEXT("A0401", "内容看起来不是简历，请检查后重试"),
     FILE_TYPE_UNSUPPORTED("A0402", "仅支持 TXT / MD / PDF 文件"),
     FILE_TOO_LARGE("A0403", "文件大小不能超过 5MB"),
+    NOT_FOUND("A0404", "请求的接口不存在"),
 
     RATE_LIMITED("A0501", "操作过于频繁，请稍后再试"),
     ACCOUNT_LOCKED("A0502", "连续登录失败次数过多，账号已锁定 5 分钟"),

@@ -20,6 +20,8 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 /**
  * 全局异常处理器：把所有异常统一转成 {@code Result} 返回体。
@@ -30,6 +32,7 @@ import org.springframework.web.multipart.MaxUploadSizeExceededException;
  *   <li>{@link MethodArgumentNotValidException} -&gt; A0103 + 字段级错误明细</li>
  *   <li>{@link ConstraintViolationException} -&gt; A0103</li>
  *   <li>{@link MaxUploadSizeExceededException} -&gt; A0403</li>
+ *   <li>{@link NoHandlerFoundException} / {@link NoResourceFoundException} -&gt; A0404 + 404</li>
  *   <li>{@link Exception} -&gt; B0001 兜底，带 requestId 便于排查</li>
  * </ol>
  */
@@ -144,6 +147,31 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * 处理 404：请求路径未匹配到任何 Handler / 静态资源。
+     *
+     * <p>背景：{@code application.yml} 开启了
+     * {@code spring.mvc.throw-exception-if-no-handler-found=true} 且关闭了静态资源映射，
+     * 因此未匹配的请求会抛出 {@link NoHandlerFoundException}（Spring 6.1 起静态资源未命中抛
+     * {@link NoResourceFoundException}）。
+     *
+     * <p>在补本方法之前，这两个异常会落到 {@code handle(Exception)} 兜底分支，被包装成
+     * {@code B0001 + HTTP 500}，把「客户端请求了不存在的接口」伪装成「服务端系统错误」，
+     * 既误导调用方，也严重干扰排障。这里单独收口为 {@code A0404 + HTTP 404}。
+     *
+     * @param e       未匹配到 Handler / 资源的异常
+     * @param request 当前请求
+     * @return 统一返回体（A0404），HTTP 404
+     */
+    @ExceptionHandler({NoHandlerFoundException.class, NoResourceFoundException.class})
+    public ResponseEntity<Result<Void>> handleNotFound(Exception e, HttpServletRequest request) {
+        log.warn("[GlobalException] 接口不存在(404), uri={}, method={}, requestId={}",
+                uriOf(request), methodOf(request), MdcUtil.getRequestId());
+        Result<Void> body = Results.failure(BaseErrorCode.NOT_FOUND)
+                .setRequestId(MdcUtil.getRequestId());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
+    }
+
+    /**
      * 兜底异常处理：记录完整堆栈，返回 B0001 + requestId（不暴露内部细节）。
      *
      * @param e       异常
@@ -170,5 +198,9 @@ public class GlobalExceptionHandler {
 
     private static String uriOf(HttpServletRequest request) {
         return request == null ? "" : request.getRequestURI();
+    }
+
+    private static String methodOf(HttpServletRequest request) {
+        return request == null ? "" : request.getMethod();
     }
 }

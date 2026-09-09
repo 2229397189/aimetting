@@ -24,8 +24,10 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
+        // 仅拦截 API 路径，页面（SPA）与静态资源（/assets/**）不进鉴权拦截器，
+        // 由前端路由守卫控制访问；后端 API 仍按 permit-paths 白名单放行。
         registry.addInterceptor(authInterceptor)
-                .addPathPatterns("/**");
+                .addPathPatterns("/api/**");
     }
 
     @Override

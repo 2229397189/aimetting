@@ -14,6 +14,7 @@ import org.springframework.http.HttpStatus;
  *   <li>{@code B0301} / {@code B0302}（状态机冲突）-&gt; 409</li>
  *   <li>{@code C0502}（舱壁打满）-&gt; 429</li>
  *   <li>{@code C0503} / {@code C0504}（等待 / 调用超时）-&gt; 504</li>
+ *   <li>{@code A0404}（接口不存在）-&gt; 404</li>
  *   <li>其余 {@code A*} -&gt; 400；其余 {@code B*} -&gt; 500；其余 {@code C*} -&gt; 502</li>
  * </ul>
  */
@@ -51,6 +52,8 @@ public final class HttpStatusResolver {
                 return HttpStatus.GATEWAY_TIMEOUT;
             case "A0501":
                 return HttpStatus.TOO_MANY_REQUESTS;
+            case "A0404":
+                return HttpStatus.NOT_FOUND;
             default:
                 break;
         }
