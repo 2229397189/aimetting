@@ -11,6 +11,7 @@ import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.catalina.connector.ClientAbortException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -39,6 +40,20 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    /**
+     * 客户端提前断开连接（刷新页面、关闭标签页、下载中断）时 Tomcat 会抛此异常。
+     * 属正常现象而非服务端故障，仅 debug 记录，避免污染 ERROR 日志。
+     *
+     * @param e       异常
+     * @param request 当前请求
+     * @return 空响应体（连接已断开，写不写都一样）
+     */
+    @ExceptionHandler(ClientAbortException.class)
+    public ResponseEntity<Void> handleClientAbort(ClientAbortException e, HttpServletRequest request) {
+        log.debug("[ClientAbort] 客户端中断连接, uri={}, msg={}", uriOf(request), e.getMessage());
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
+    }
 
     /**
      * 处理业务异常（A/B/C 三级）。
