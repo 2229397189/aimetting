@@ -60,4 +60,9 @@ public class AiProperties {
     public String modelFor(AiBizType bizType) {
         return bizType == AiBizType.REPORT ? reportModel : model;
     }
+
+    /** 是否 mock 模式（离线演示，不调用真实大模型）。 */
+    public boolean isMock() {
+        return "mock".equalsIgnoreCase(provider);
+    }
 }

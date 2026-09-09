@@ -52,9 +52,17 @@ public class ResumeServiceImpl implements ResumeService {
     /** 出题 prompt 注入的最大摘要长度。 */
     private static final int DIGEST_MAX = 800;
 
-    /** 非简历文本的判定关键词（命中 ≥ 2 才视为简历）。 */
+    /** 简历常见关键词（命中任意一个即视为疑似简历，宁可误放不放过真简历）。 */
     private static final Pattern RESUME_KEYWORD = Pattern.compile(
-            "学历|教育|项目|实习|工作|技能|经验|邮箱|电话|university|project|skill|大学|本科|硕士|工程师");
+            "学历|教育|项目|实习|工作|技能|经验|邮箱|电话|大学|本科|硕士|博士|工程师|简历|姓名|求职|意向|岗位|"
+            + "公司|职责|负责|开发|毕业|学校|专业|年限|年龄|期望|薪资|经历|获奖|证书|"
+            + "university|project|skill|resume|java|spring|python|数据库|框架|系统|架构|后端|前端");
+
+    /** 邮箱结构。 */
+    private static final Pattern EMAIL = Pattern.compile("[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}");
+
+    /** 手机号结构（中国大陆 11 位）。 */
+    private static final Pattern PHONE = Pattern.compile("(?<![0-9])1[3-9][0-9]{9}(?![0-9])");
 
     private final ResumeMapper resumeMapper;
     private final AiGuardService aiGuardService;
@@ -88,8 +96,8 @@ public class ResumeServiceImpl implements ResumeService {
     }
 
     private Long doParse(Long userId, String title, String content, String clientToken, String fileUrl) {
-        // 规则预检：非简历文本直接报错，不调用 AI（省 token）
-        if (!looksLikeResume(content)) {
+        // 规则预检：mock 模式下直接放行（交给规则兜底解析）；真实模式仅在明显不像简历时拦截，避免误杀真实简历
+        if (!aiProperties.isMock() && !looksLikeResume(content)) {
             throw new ClientException("内容看起来不是简历，请检查后重试", BaseErrorCode.NOT_RESUME_TEXT);
         }
         // 幂等：命中回放键直接返回上次结果
@@ -277,15 +285,22 @@ public class ResumeServiceImpl implements ResumeService {
     }
 
     private boolean looksLikeResume(String text) {
-        if (text == null || text.length() < 50) {
+        if (text == null || text.length() < 30) {
             return false;
         }
-        java.util.regex.Matcher m = RESUME_KEYWORD.matcher(text);
-        int hit = 0;
-        while (m.find()) {
-            hit++;
+        // 命中任意简历关键词即视为疑似简历
+        if (RESUME_KEYWORD.matcher(text).find()) {
+            return true;
         }
-        return hit >= 2;
+        // 或包含邮箱 / 手机号结构
+        if (EMAIL.matcher(text).find() || PHONE.matcher(text).find()) {
+            return true;
+        }
+        // 或具备「多行 key：value」的简历结构（至少 3 行带中文/英文冒号）
+        long colonLines = java.util.Arrays.stream(text.split("\\R"))
+                .filter(l -> l.matches(".*[：:].+"))
+                .count();
+        return colonLines >= 3;
     }
 
     private int clampScore(int score) {
