@@ -30,6 +30,7 @@ import com.aimeeting.interview.interview.domain.state.InterviewSessionStateMachi
 import com.aimeeting.interview.interview.domain.state.SessionStatus;
 import com.aimeeting.interview.interview.service.model.GeneratedQuestion;
 import com.aimeeting.interview.question.domain.Direction;
+import com.aimeeting.interview.report.service.ReportService;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -57,6 +58,7 @@ public class InterviewSessionServiceImpl implements InterviewSessionService {
     private final QuestionGenerationService questionGenerationService;
     private final InterviewProperties interviewProperties;
     private final SseEmitterManager sseEmitterManager;
+    private final ReportService reportService;
 
     @Override
     public Long create(Long userId, CreateSessionReq req) {
@@ -259,8 +261,13 @@ public class InterviewSessionServiceImpl implements InterviewSessionService {
         session.setFinishedAt(LocalDateTime.now());
         session.setScore(BigDecimal.valueOf(computeTotalScore(sessionId)));
         sessionMapper.updateById(session);
-        // M6 报告生成在此触发（当前先返回 null，后续补充）
-        return null;
+        // 结束会话即生成报告（幂等），失败不阻塞 finish
+        try {
+            return reportService.generate(userId, sessionId);
+        } catch (Exception e) {
+            log.warn("[Session] finish 报告生成失败，仍返回 null: {}", e.getMessage());
+            return null;
+        }
     }
 
     @Override
@@ -308,6 +315,11 @@ public class InterviewSessionServiceImpl implements InterviewSessionService {
                 aMsg.setContent(ans.getContent());
                 aMsg.setQuestionNo(q.getQuestionNo());
                 aMsg.setScore(ans.getScore());
+                // 透出 AI 评分明细：highlights/gaps/improvedAnswer 取库表字段，followUpQuestion 解析 comment 兜底
+                aMsg.setHighlights(parseList(ans.getHighlights()));
+                aMsg.setGaps(parseList(ans.getGaps()));
+                aMsg.setImprovedAnswer(ans.getImprovedAnswer());
+                aMsg.setFollowUpQuestion(parseFollowUpQuestion(ans.getComment()));
                 aMsg.setCreatedAt(ans.getCreateTime());
                 list.add(aMsg);
             }
@@ -489,5 +501,27 @@ public class InterviewSessionServiceImpl implements InterviewSessionService {
     private List<String> parseList(String json) {
         List<String> list = JsonUtil.parse(json, new com.fasterxml.jackson.core.type.TypeReference<List<String>>() {});
         return list == null ? new ArrayList<>() : list;
+    }
+
+    /** 从点评正文中解析 {@code ===JSON===} 之后的 followUpQuestion（库表无独立字段，纯兜底）。 */
+    private String parseFollowUpQuestion(String comment) {
+        if (comment == null || comment.isBlank()) {
+            return null;
+        }
+        int idx = comment.indexOf("===JSON===");
+        if (idx < 0) {
+            return null;
+        }
+        String json = comment.substring(idx + "===JSON===".length()).trim();
+        if (json.isEmpty()) {
+            return null;
+        }
+        try {
+            com.fasterxml.jackson.databind.JsonNode node = JsonUtil.MAPPER.readTree(json);
+            com.fasterxml.jackson.databind.JsonNode fu = node.get("followUpQuestion");
+            return fu != null && !fu.isNull() ? fu.asText() : null;
+        } catch (Exception e) {
+            return null;
+        }
     }
 }
