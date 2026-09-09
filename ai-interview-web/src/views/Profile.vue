@@ -105,7 +105,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Key, Refresh } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
@@ -113,6 +113,7 @@ import { userApi } from '@/api/user'
 import { useUserStore } from '@/stores/user'
 import type { UpdateProfileReq, UserProfile, UserStats } from '@/types'
 import { formatScore } from '@/utils/format'
+import { useChartTheme } from '@/composables/useChartTheme'
 
 const userStore = useUserStore()
 
@@ -142,6 +143,8 @@ const trendChartRef = ref<HTMLDivElement | null>(null)
 let trendChart: echarts.ECharts | null = null
 let resizeHandler: (() => void) | null = null
 
+const { isDark, palette } = useChartTheme()
+
 const trendDates = computed<string[]>(() => (stats.value.trend || []).map((t) => t.date))
 
 function renderTrend(): void {
@@ -151,15 +154,39 @@ function renderTrend(): void {
   const dates = trend.map((t) => t.date)
   const counts = trend.map((t) => t.count)
   const scores = trend.map((t) => (t.score != null ? t.score : null))
+  const c = palette.value
   trendChart.setOption(
     {
+      textStyle: { color: c.text },
       tooltip: { trigger: 'axis' },
-      legend: { data: ['场次', '平均分'], bottom: 0 },
+      legend: { data: ['场次', '平均分'], bottom: 0, textStyle: { color: c.text } },
       grid: { left: 40, right: 40, top: 24, bottom: 48 },
-      xAxis: { type: 'category', data: dates, boundaryGap: false },
+      xAxis: {
+        type: 'category',
+        data: dates,
+        boundaryGap: false,
+        axisLine: { lineStyle: { color: c.axisLine } },
+        axisLabel: { color: c.text },
+        splitLine: { lineStyle: { color: c.splitLine } },
+      },
       yAxis: [
-        { type: 'value', name: '场次', minInterval: 1 },
-        { type: 'value', name: '分数', min: 0, max: 100 },
+        {
+          type: 'value',
+          name: '场次',
+          minInterval: 1,
+          axisLine: { lineStyle: { color: c.axisLine } },
+          axisLabel: { color: c.text },
+          splitLine: { lineStyle: { color: c.splitLine } },
+        },
+        {
+          type: 'value',
+          name: '分数',
+          min: 0,
+          max: 100,
+          axisLine: { lineStyle: { color: c.axisLine } },
+          axisLabel: { color: c.text },
+          splitLine: { lineStyle: { color: c.splitLine } },
+        },
       ],
       series: [
         {
@@ -285,6 +312,11 @@ onMounted(() => {
     if (trendChart) trendChart.resize()
   }
   window.addEventListener('resize', resizeHandler)
+})
+
+// 主题切换时重绘趋势图配色
+watch(isDark, () => {
+  renderTrend()
 })
 
 onBeforeUnmount(() => {

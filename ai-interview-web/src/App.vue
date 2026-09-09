@@ -15,12 +15,18 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
+import 'element-plus/theme-chalk/dark/css-vars.css'
 import AppHeader from '@/components/AppHeader/index.vue'
+import { useThemeStore } from '@/stores/theme'
 
 const route = useRoute()
 
 /** 登录页 / 面试房间页隐藏顶部导航 */
 const hideHeader = computed<boolean>(() => !!route.meta?.hideHeader)
+
+/** 应用启动时初始化主题（读取持久化值或跟随系统） */
+const themeStore = useThemeStore()
+themeStore.init()
 </script>
 
 <style scoped lang="scss">

@@ -63,7 +63,7 @@
     </section>
 
     <!-- 详情抽屉 -->
-    <el-drawer v-model="drawerVisible" :title="detailData?.title || '题目详情'" size="520px" direction="rtl">
+    <el-drawer v-model="drawerVisible" :title="detailData?.title || '题目详情'" size="92%" direction="rtl">
       <template v-if="detailData">
         <div class="detail-tags">
           <el-tag size="small" type="info" effect="plain">{{ directionLabel(detailData.direction) }}</el-tag>
@@ -271,5 +271,21 @@ onMounted(() => {
 
 :deep(.el-table__row) {
   cursor: pointer;
+}
+
+/* 移动端：筛选项占满整行，表格横向滚动 */
+@media (max-width: 767px) {
+  .filter-item,
+  .filter-keyword {
+    width: 100%;
+  }
+
+  .filters {
+    gap: 8px;
+  }
+
+  .filters > .el-button {
+    flex: 1;
+  }
 }
 </style>

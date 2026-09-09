@@ -6,6 +6,7 @@
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import * as echarts from 'echarts'
 import { DIMENSION_LABELS, normalizeDimensions } from '@/utils/dict'
+import { useChartTheme } from '@/composables/useChartTheme'
 
 /**
  * 五维能力雷达图（ECharts）
@@ -31,6 +32,8 @@ const chartRef = ref<HTMLDivElement | null>(null)
 let chart: echarts.ECharts | null = null
 let resizeHandler: (() => void) | null = null
 
+const { isDark, palette } = useChartTheme()
+
 /** 构造 ECharts option */
 function buildOption(): echarts.EChartsOption {
   const data = normalizeDimensions(props.dimensions, 60)
@@ -44,6 +47,7 @@ function buildOption(): echarts.EChartsOption {
   return {
     tooltip: {
       trigger: 'item',
+      textStyle: { color: palette.value.text },
       formatter: () => {
         return keys
           .map((key, i) => `${DIMENSION_LABELS[key]}：${values[i]} 分`)
@@ -55,19 +59,19 @@ function buildOption(): echarts.EChartsOption {
       radius: '66%',
       indicator,
       axisName: {
-        color: '#4b5563',
+        color: palette.value.text,
         fontSize: 12,
       },
       splitArea: {
         areaStyle: {
-          color: ['#ffffff', '#fafaff'],
+          color: palette.value.areaBg,
         },
       },
       axisLine: {
-        lineStyle: { color: '#e5e7eb' },
+        lineStyle: { color: palette.value.axisLine },
       },
       splitLine: {
-        lineStyle: { color: '#e5e7eb' },
+        lineStyle: { color: palette.value.splitLine },
       },
     },
     series: [
@@ -126,6 +130,11 @@ watch(
   },
   { deep: true },
 )
+
+// 主题切换时重绘，使轴线 / 文字配色跟随暗色
+watch(isDark, () => {
+  render()
+})
 
 onBeforeUnmount(() => {
   if (resizeHandler) {

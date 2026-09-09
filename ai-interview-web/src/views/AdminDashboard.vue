@@ -113,13 +113,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { Refresh } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
 import { adminApi } from '@/api/admin'
 import type { AiHealthResp, OverviewStats, SessionTrend } from '@/types'
 import { directionLabel } from '@/utils/dict'
 import { formatScore } from '@/utils/format'
+import { useChartTheme } from '@/composables/useChartTheme'
 import PageLoading from '@/components/PageLoading/index.vue'
 import EmptyState from '@/components/EmptyState/index.vue'
 
@@ -161,6 +162,8 @@ let trendChart: echarts.ECharts | null = null
 let distChart: echarts.ECharts | null = null
 let resizeHandler: (() => void) | null = null
 
+const { isDark, palette } = useChartTheme()
+
 const directionRows = computed(() =>
   (trend.directionDistribution || []).map((d) => ({
     name: d.label || directionLabel(d.direction),
@@ -171,12 +174,27 @@ const directionRows = computed(() =>
 function renderTrendChart(): void {
   if (!trendChartRef.value) return
   if (!trendChart) trendChart = echarts.init(trendChartRef.value)
+  const c = palette.value
   trendChart.setOption(
     {
+      textStyle: { color: c.text },
       tooltip: { trigger: 'axis' },
       grid: { left: 40, right: 24, top: 24, bottom: 36 },
-      xAxis: { type: 'category', data: trend.dates, boundaryGap: false },
-      yAxis: { type: 'value', minInterval: 1 },
+      xAxis: {
+        type: 'category',
+        data: trend.dates,
+        boundaryGap: false,
+        axisLine: { lineStyle: { color: c.axisLine } },
+        axisLabel: { color: c.text },
+        splitLine: { lineStyle: { color: c.splitLine } },
+      },
+      yAxis: {
+        type: 'value',
+        minInterval: 1,
+        axisLine: { lineStyle: { color: c.axisLine } },
+        axisLabel: { color: c.text },
+        splitLine: { lineStyle: { color: c.splitLine } },
+      },
       series: [
         {
           name: '会话数',
@@ -195,10 +213,12 @@ function renderTrendChart(): void {
 function renderDistChart(): void {
   if (!distChartRef.value) return
   if (!distChart) distChart = echarts.init(distChartRef.value)
+  const c = palette.value
   distChart.setOption(
     {
+      textStyle: { color: c.text },
       tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
-      legend: { bottom: 0, type: 'scroll' },
+      legend: { bottom: 0, type: 'scroll', textStyle: { color: c.text } },
       series: [
         {
           name: '方向分布',
@@ -206,7 +226,7 @@ function renderDistChart(): void {
           radius: ['42%', '66%'],
           center: ['50%', '46%'],
           data: directionRows.value,
-          label: { formatter: '{b}\n{c}' },
+          label: { formatter: '{b}\n{c}', color: c.text },
         },
       ],
     },
@@ -272,6 +292,12 @@ onMounted(() => {
     if (distChart) distChart.resize()
   }
   window.addEventListener('resize', resizeHandler)
+})
+
+// 主题切换时重绘两张图表配色
+watch(isDark, () => {
+  renderTrendChart()
+  renderDistChart()
 })
 
 onBeforeUnmount(() => {

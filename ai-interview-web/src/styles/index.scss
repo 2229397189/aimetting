@@ -45,6 +45,81 @@
   --content-max-width: 1280px;
 }
 
+/* ------------------------------ 暗色模式 ------------------------------
+ * 对齐 Element Plus 暗色变量（html.dark 时其 css-vars.css 生效），
+ * 这里补充业务自定义变量，保证全站（非 EP 组件）无白底黑字死角。
+ */
+html.dark {
+  --color-primary: #6366f1;
+  --color-primary-light: #818cf8;
+  --color-primary-dark: #4f46e5;
+  --color-primary-bg: rgba(99, 102, 241, 0.16);
+
+  --text-primary: #e5eaf3;
+  --text-regular: #cfd3dc;
+  --text-secondary: #a3a6ad;
+  --text-placeholder: #8d9095;
+
+  --bg-page: #0f1117;
+  --bg-card: #181b22;
+  --bg-hover: #1f232c;
+  --border-color: #2a2f3a;
+  --border-light: #232830;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 8px 28px rgba(0, 0, 0, 0.5);
+}
+
+html.dark body {
+  background: var(--bg-page);
+  color: var(--text-primary);
+}
+
+/* 暗色下滚动条配色 */
+html.dark {
+  ::-webkit-scrollbar-thumb {
+    background: #3a3f4b;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #4a5060;
+  }
+}
+
+/* 覆盖业务里写死的浅色表面（渐变 / 纯白卡片），避免暗色下出现白底死角 */
+html.dark {
+  .welcome,
+  .stat-card,
+  .ov-card,
+  .stat-mini,
+  .health-item {
+    background: var(--bg-card) !important;
+    border-color: var(--border-color) !important;
+  }
+
+  .quick-card {
+    background: var(--bg-card) !important;
+    border-color: var(--border-color) !important;
+  }
+
+  .markdown-body code {
+    background: rgba(255, 255, 255, 0.08);
+    color: #f0abfc;
+  }
+
+  .markdown-body pre {
+    background: #0b0d12;
+    color: #e5e7eb;
+  }
+
+  .analysis-text {
+    background: #0b0d12 !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-regular) !important;
+  }
+}
+
 * {
   box-sizing: border-box;
 }
@@ -396,5 +471,29 @@ p {
 
   .score-hero {
     font-size: 38px;
+  }
+
+  /* 移动端卡片与间距收缩 */
+  .card {
+    padding: 16px;
+  }
+
+  .card + .card {
+    margin-top: var(--gap-sm);
+  }
+
+  /* 弹窗在窄屏不溢出 */
+  .el-dialog {
+    width: 92% !important;
+  }
+
+  /* 表格横向滚动，避免窄屏挤压变形 */
+  .el-table {
+    width: 100%;
+  }
+
+  /* 分页在窄屏居中，避免右侧溢出 */
+  .pager {
+    justify-content: center;
   }
 }

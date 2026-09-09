@@ -22,6 +22,16 @@
       </el-menu>
 
       <div class="app-header__right">
+        <!-- 主题切换（日 / 夜） -->
+        <el-button
+          class="theme-toggle"
+          text
+          :title="themeStore.isDark ? '切换到浅色' : '切换到深色'"
+          @click="themeStore.toggle()"
+        >
+          <el-icon><component :is="themeStore.isDark ? 'Sunny' : 'Moon'" /></el-icon>
+        </el-button>
+
         <!-- 移动端菜单按钮 -->
         <el-button class="menu-toggle" text @click="drawerVisible = true">
           <el-icon><Menu /></el-icon>
@@ -92,6 +102,7 @@ interface MenuItem {
 const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
+const themeStore = useThemeStore()
 
 const drawerVisible = ref<boolean>(false)
 
@@ -188,7 +199,7 @@ async function handleLogout(): Promise<void> {
   position: sticky;
   top: 0;
   z-index: 100;
-  background: #ffffff;
+  background: var(--bg-card);
   border-bottom: 1px solid var(--border-light);
   box-shadow: var(--shadow-sm);
 }
