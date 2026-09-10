@@ -35,8 +35,9 @@ server:
 ai-interview:
   # ---------------- JWT ----------------
   jwt:
-    # HS256 要求密钥长度 >= 32 字节，此处 64 字符
-    secret: ai-meeting-interview-platform-default-jwt-secret-key-please-change-me-2024
+    # HS256 要求密钥长度 >= 32 字节，此处 64 字符。
+    # 生产环境务必通过环境变量 AI_INTERVIEW_JWT_SECRET 覆盖，切勿使用内置默认值。
+    secret: ${AI_INTERVIEW_JWT_SECRET:ai-meeting-interview-platform-default-jwt-secret-key-please-change-me-2024}
     access-expire-seconds: 7200
     refresh-expire-seconds: 604800
     issuer: ai-interview-server
@@ -61,8 +62,10 @@ ai-interview:
   # ---------------- AI ----------------
   ai:
     provider: deepseek
-    base-url: https://api.deepseek.com
-    api-key: sk-1c8950200dee48a7ae66910d52b808c0
+    base-url: ${AI_INTERVIEW_AI_BASE_URL:https://api.deepseek.com}
+    # 密钥不落代码：生产通过环境变量 AI_INTERVIEW_AI_API_KEY 注入。
+    # 未注入时回落到下方内置值（仅用于本地开发，该 key 已泄露，请尽快轮换并改用环境变量）。
+    api-key: ${AI_INTERVIEW_AI_API_KEY:sk-1c8950200dee48a7ae66910d52b808c0}
     model: deepseek-v4-flash
     report-model: deepseek-chat
     connect-timeout-seconds: 10

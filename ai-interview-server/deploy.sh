@@ -53,13 +53,16 @@ if [ ! -f "$DEPLOY_DIR/.env.local" ]; then
 fi
 JWT_SECRET=$(grep AI_INTERVIEW_JWT_SECRET "$DEPLOY_DIR/.env.local" | cut -d= -f2-)
 
-# 5) 启动（H2 + Mock 评分，零外部依赖）
+# 5) 启动（H2 文件库 + 真实 DeepSeek 评分）
+#    注意：JWT 密钥的配置路径是 ai-interview.jwt.secret，
+#    早期版本误写为 ai-interview.security.jwt-secret，导致生成的随机密钥从未生效、
+#    线上一直使用 yml 里的默认公开密钥（可伪造任意用户 token），此处已修正。
 LOG="$DEPLOY_DIR/app.log"
 nohup setsid java -jar "$JAR" \
   --server.port=$APP_PORT \
   --spring.profiles.active=h2 \
   --ai-interview.ai.provider=deepseek \
-  --ai-interview.security.jwt-secret="$JWT_SECRET" \
+  --ai-interview.jwt.secret="$JWT_SECRET" \
   > "$LOG" 2>&1 &
 
 echo "==> 已启动，日志: $LOG"

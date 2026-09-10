@@ -1,6 +1,6 @@
 package com.aimeeting.interview.resume.service;
 
-import com.aimeeting.interview.ai.AiProperties;
+import com.aimeeting.interview.config.AiProperties;
 import com.aimeeting.interview.ai.fallback.RuleEvaluator;
 import com.aimeeting.interview.ai.guard.AiGuardService;
 import com.aimeeting.interview.ai.model.AiBizType;
@@ -99,7 +99,7 @@ public class ResumeServiceImpl implements ResumeService {
 
     private Long doParse(Long userId, String title, String content, String clientToken, String fileUrl) {
         // 规则预检：mock 模式下直接放行（交给规则兜底解析）；真实模式仅在明显不像简历时拦截，避免误杀真实简历
-        if (!aiProperties.isMock() && !looksLikeResume(content)) {
+        if (!aiProperties.isMockMode() && !looksLikeResume(content)) {
             throw new ClientException("内容看起来不是简历，请检查后重试", BaseErrorCode.NOT_RESUME_TEXT);
         }
         // 幂等：命中回放键直接返回上次结果

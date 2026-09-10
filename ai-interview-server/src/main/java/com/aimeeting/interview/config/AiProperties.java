@@ -1,5 +1,6 @@
 package com.aimeeting.interview.config;
 
+import com.aimeeting.interview.ai.model.AiBizType;
 import java.time.Duration;
 import java.util.List;
 import lombok.Data;
@@ -7,10 +8,12 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
 /**
- * AI 能力相关配置（{@code ai-interview.ai}）。
+ * AI 能力相关配置（{@code ai-interview.ai}）——全应用唯一绑定入口。
  *
- * <p>M1 阶段仅落配置类（含默认值），真实调用由 M3 的
- * {@code AiProviderFactory} / {@code AiGuardService} 消费。
+ * <p>历史原因曾存在两份同名配置类（{@code com.aimeeting.interview.ai.AiProperties}
+ * 与本类），两者字段高度重复、默认值不一致，且按类型注入时容易注入到错误实例，
+ * 属于典型的配置漂移。现已统一收敛到本类：AI 层（guard/provider）与
+ * 运维层（health/config）共用同一份配置实例。
  */
 @Data
 @Component
@@ -105,5 +108,31 @@ public class AiProperties {
      */
     public Duration singleflightWaitTimeout() {
         return Duration.ofSeconds(singleflightWaitTimeoutSeconds);
+    }
+
+    /**
+     * 取某业务阶段的超时（毫秒）。
+     *
+     * @param bizType 业务类型
+     * @return 该阶段的超时毫秒数
+     */
+    public long stageTimeoutMillis(AiBizType bizType) {
+        return switch (bizType) {
+            case QUESTION -> Duration.ofSeconds(questionTimeoutSeconds).toMillis();
+            case EVALUATE -> Duration.ofSeconds(evaluateTimeoutSeconds).toMillis();
+            case FOLLOW_UP -> Duration.ofSeconds(followUpTimeoutSeconds).toMillis();
+            case RESUME -> Duration.ofSeconds(resumeTimeoutSeconds).toMillis();
+            case REPORT -> Duration.ofSeconds(reportTimeoutSeconds).toMillis();
+        };
+    }
+
+    /**
+     * 取业务使用的模型：报告生成走 reportModel（质量优先），其余走通用 model。
+     *
+     * @param bizType 业务类型
+     * @return 模型名
+     */
+    public String modelFor(AiBizType bizType) {
+        return bizType == AiBizType.REPORT ? reportModel : model;
     }
 }

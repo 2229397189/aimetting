@@ -1,6 +1,6 @@
 package com.aimeeting.interview.interview.service;
 
-import com.aimeeting.interview.ai.AiProperties;
+import com.aimeeting.interview.config.AiProperties;
 import com.aimeeting.interview.ai.fallback.RuleEvaluator;
 import com.aimeeting.interview.ai.guard.AiGuardService;
 import com.aimeeting.interview.ai.model.AiBizType;

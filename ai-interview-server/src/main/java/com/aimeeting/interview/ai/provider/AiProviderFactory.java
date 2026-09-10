@@ -1,6 +1,6 @@
 package com.aimeeting.interview.ai.provider;
 
-import com.aimeeting.interview.ai.AiProperties;
+import com.aimeeting.interview.config.AiProperties;
 import com.aimeeting.interview.ai.model.AiBizType;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.concurrent.TimeUnit;

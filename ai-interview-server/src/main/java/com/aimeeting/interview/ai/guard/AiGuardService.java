@@ -1,6 +1,6 @@
 package com.aimeeting.interview.ai.guard;
 
-import com.aimeeting.interview.ai.AiProperties;
+import com.aimeeting.interview.config.AiProperties;
 import com.aimeeting.interview.ai.log.AiCallLogDO;
 import com.aimeeting.interview.ai.log.AiCallLogService;
 import com.aimeeting.interview.ai.model.AiErrorType;
