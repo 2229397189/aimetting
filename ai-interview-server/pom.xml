@@ -179,6 +179,30 @@
         <configuration>
           <encoding>UTF-8</encoding>
         </configuration>
+        <executions>
+          <!--
+            前端产物集成：把 ai-interview-web/dist 打进 jar 的 static/。
+            历史坑：此前 pom 完全没有前端集成配置，src/main/resources/static 里躺的是
+            某次手动复制进去的旧产物，导致「改了前端代码但打包出来的 jar 还是旧的」。
+            现在改为每次打包都从前端 dist 重新复制，杜绝手工遗漏。
+          -->
+          <execution>
+            <id>copy-frontend-dist</id>
+            <phase>prepare-package</phase>
+            <goals>
+              <goal>copy-resources</goal>
+            </goals>
+            <configuration>
+              <outputDirectory>${project.build.outputDirectory}/static</outputDirectory>
+              <resources>
+                <resource>
+                  <directory>${project.basedir}/../ai-interview-web/dist</directory>
+                  <filtering>false</filtering>
+                </resource>
+              </resources>
+            </configuration>
+          </execution>
+        </executions>
       </plugin>
       <plugin>
         <groupId>org.springframework.boot</groupId>
