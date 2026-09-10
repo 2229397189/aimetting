@@ -1,5 +1,6 @@
 <template>
   <div class="page-container admin-dashboard">
+    <BackBar to="/" label="返回首页" />
     <section class="card">
       <div class="card-header">
         <div class="card-title">数据看板</div>
@@ -123,6 +124,7 @@ import { formatScore } from '@/utils/format'
 import { useChartTheme } from '@/composables/useChartTheme'
 import PageLoading from '@/components/PageLoading/index.vue'
 import EmptyState from '@/components/EmptyState/index.vue'
+import BackBar from '@/components/BackBar/index.vue'
 
 const overviewLoading = ref<boolean>(false)
 const trendLoading = ref<boolean>(false)

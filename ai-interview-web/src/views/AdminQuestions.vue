@@ -1,5 +1,6 @@
 <template>
   <div class="page-container admin-questions">
+    <BackBar to="/admin/dashboard" label="返回管理后台" />
     <section class="card">
       <div class="card-header">
         <div class="card-title">题目管理</div>
@@ -136,6 +137,7 @@ import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Refresh, Upload } from '@element-plus/icons-vue'
 import { questionApi } from '@/api/question'
+import BackBar from '@/components/BackBar/index.vue'
 import type { Difficulty, Direction, QuestionResp, QuestionSaveReq, QuestionSource } from '@/types'
 import {
   DIFFICULTY_OPTIONS,

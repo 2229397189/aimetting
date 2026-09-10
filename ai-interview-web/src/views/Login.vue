@@ -302,10 +302,7 @@ onMounted(() => {
 .login-page__bg {
   position: absolute;
   inset: 0;
-  background:
-    radial-gradient(1000px 500px at 12% 12%, rgba(99, 102, 241, 0.16), transparent 60%),
-    radial-gradient(800px 420px at 88% 82%, rgba(16, 185, 129, 0.12), transparent 60%),
-    #f5f6fa;
+  background: var(--grad-page);
 }
 
 .login-box {
@@ -317,13 +314,13 @@ onMounted(() => {
   grid-template-columns: 1fr 1fr;
   background: #fff;
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--shadow-xl);
   overflow: hidden;
 }
 
 .login-brand {
   padding: 40px 36px;
-  background: linear-gradient(150deg, #4f46e5, #7c3aed);
+  background: var(--grad-brand);
   color: #fff;
   display: flex;
   flex-direction: column;
