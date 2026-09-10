@@ -1,8 +1,9 @@
 <template>
   <div class="page-container question-bank">
+    <BackBar to="/" label="返回首页" />
     <section class="card">
       <div class="card-header">
-        <div class="card-title">题库浏览</div>
+        <div class="card-title grad-text">题库浏览</div>
         <span class="tip-text">共 {{ total }} 道题 · 来源含 AI 生成 / 精选题库 / 内置 / 管理员录入</span>
       </div>
 
@@ -107,6 +108,7 @@ import {
 import { toArray } from '@/utils/format'
 import PageLoading from '@/components/PageLoading/index.vue'
 import EmptyState from '@/components/EmptyState/index.vue'
+import BackBar from '@/components/BackBar/index.vue'
 
 const loading = ref<boolean>(false)
 const list = ref<QuestionResp[]>([])
@@ -249,7 +251,7 @@ onMounted(() => {
   font-size: 13px;
   line-height: 1.8;
   color: var(--text-regular);
-  background: #fafafa;
+  background: var(--bg-hover);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-sm);
   padding: 12px;

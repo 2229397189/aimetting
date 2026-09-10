@@ -1,5 +1,6 @@
 <template>
   <div class="page-container report-detail">
+    <BackBar to="/interview" label="返回会话列表" />
     <PageLoading v-if="loading" :min-height="320" text="报告加载中…" />
     <EmptyState v-else-if="!report" description="未找到该场次的面试报告" min-height="240">
       <template #action>
@@ -62,7 +63,7 @@
 
       <!-- 亮点 / 待改进 / 后续行动 -->
       <section class="grid-3 mt-16">
-        <div class="card list-card">
+        <div class="card list-card hover-lift">
           <div class="list-card__title list-card__title--good">
             <el-icon><CircleCheck /></el-icon>亮点
           </div>
@@ -71,7 +72,7 @@
           </ul>
           <p v-else class="muted">暂无</p>
         </div>
-        <div class="card list-card">
+        <div class="card list-card hover-lift">
           <div class="list-card__title list-card__title--warn">
             <el-icon><WarningFilled /></el-icon>待改进
           </div>
@@ -80,7 +81,7 @@
           </ul>
           <p v-else class="muted">暂无</p>
         </div>
-        <div class="card list-card">
+        <div class="card list-card hover-lift">
           <div class="list-card__title list-card__title--act">
             <el-icon><Promotion /></el-icon>后续行动
           </div>
@@ -108,7 +109,7 @@
           <div
             v-for="(it, di) in studyItems"
             :key="it.key"
-            class="study-card"
+            class="study-card hover-lift"
             :class="{ 'study-card--top': di === 0 }"
           >
             <div class="study-card__head">
@@ -237,6 +238,7 @@ import { formatScore, scoreLevel } from '@/utils/format'
 import RadarChart from '@/components/RadarChart/index.vue'
 import PageLoading from '@/components/PageLoading/index.vue'
 import EmptyState from '@/components/EmptyState/index.vue'
+import BackBar from '@/components/BackBar/index.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -519,16 +521,16 @@ onMounted(async () => {
 }
 
 .level-good {
-  background: #dcfce7;
-  color: #16a34a;
+  background: var(--color-success-bg);
+  color: var(--color-success);
 }
 .level-mid {
-  background: #fef3c7;
-  color: #d97706;
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
 }
 .level-bad {
-  background: #fee2e2;
-  color: #dc2626;
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
 }
 
 .head-actions {
@@ -599,7 +601,7 @@ onMounted(async () => {
   border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
   padding: 16px;
-  background: #fcfcff;
+  background: var(--bg-hover);
 }
 
 .q-card__head {

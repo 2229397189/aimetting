@@ -1,5 +1,6 @@
 <template>
   <div class="page-container dashboard">
+    <BackBar to="/" label="返回首页" />
     <!-- 欢迎卡片 -->
     <section class="welcome card">
       <div class="welcome__main">
@@ -127,6 +128,7 @@ import { formatScore, fromNow } from '@/utils/format'
 import StatusBadge from '@/components/StatusBadge/index.vue'
 import PageLoading from '@/components/PageLoading/index.vue'
 import EmptyState from '@/components/EmptyState/index.vue'
+import BackBar from '@/components/BackBar/index.vue'
 
 const router = useRouter()
 const userStore = useUserStore()

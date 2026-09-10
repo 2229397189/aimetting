@@ -14,6 +14,11 @@
   --color-danger: #dc2626;
   --color-info: #0284c7;
 
+  /* 语义色浅底（徽章 / 强调块背景） */
+  --color-success-bg: #dcfce7;
+  --color-warning-bg: #fef3c7;
+  --color-danger-bg: #fee2e2;
+
   /* 文本 */
   --text-primary: #1f2937;
   --text-regular: #4b5563;
@@ -145,6 +150,10 @@ html.dark {
   --color-primary-light: #818cf8;
   --color-primary-dark: #4f46e5;
   --color-primary-bg: rgba(99, 102, 241, 0.16);
+
+  --color-success-bg: rgba(22, 163, 74, 0.18);
+  --color-warning-bg: rgba(217, 119, 6, 0.18);
+  --color-danger-bg: rgba(220, 38, 38, 0.18);
 
   --text-primary: #e5eaf3;
   --text-regular: #cfd3dc;
@@ -352,6 +361,11 @@ p {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+/* 标题同时套 .grad-text 时让渐变文字优先生效（覆盖 .card-title 的 color） */
+.card-title.grad-text {
+  color: transparent;
 }
 
 .card-title::before {

@@ -312,7 +312,7 @@ onMounted(() => {
   max-width: 960px;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  background: #fff;
+  background: var(--bg-card);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-xl);
   overflow: hidden;

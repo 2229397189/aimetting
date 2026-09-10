@@ -3,7 +3,7 @@
     <BackBar to="/admin/dashboard" label="返回管理后台" />
     <section class="card">
       <div class="card-header">
-        <div class="card-title">题目管理</div>
+        <div class="card-title grad-text">题目管理</div>
         <div class="flex gap-8">
           <el-button type="success" :icon="Upload" @click="openImportDialog">批量导入</el-button>
           <el-button type="primary" :icon="Plus" @click="openCreate">新增题目</el-button>

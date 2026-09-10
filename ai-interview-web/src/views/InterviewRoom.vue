@@ -210,7 +210,7 @@
         </section>
 
         <!-- 流式评分结果 -->
-        <section v-if="streaming || commentText || scoreInfo" class="card eval-card">
+        <section v-if="streaming || commentText || scoreInfo" class="card eval-card glass-card">
           <div class="card-header">
             <div class="card-title">AI 点评</div>
             <div v-if="scoreInfo" class="eval-score">
@@ -879,7 +879,7 @@ onBeforeUnmount(() => {
   position: sticky;
   top: 0;
   z-index: 50;
-  background: #fff;
+  background: var(--bg-card);
   border-bottom: 1px solid var(--border-light);
   box-shadow: var(--shadow-sm);
 }
@@ -964,7 +964,7 @@ onBeforeUnmount(() => {
   border: 1px solid var(--border-color);
   font-size: 12px;
   color: var(--text-secondary);
-  background: #fff;
+  background: var(--bg-card);
 }
 
 .phase-chip.active {
@@ -975,9 +975,9 @@ onBeforeUnmount(() => {
 }
 
 .phase-chip.done {
-  border-color: #bbf7d0;
+  border-color: var(--color-success);
   color: var(--color-success);
-  background: #f0fdf4;
+  background: var(--color-success-bg);
 }
 
 .phase-chip__count {
@@ -1029,8 +1029,8 @@ onBeforeUnmount(() => {
 }
 
 .reference-points {
-  background: #fafaff;
-  border: 1px dashed #dfe3ff;
+  background: var(--color-primary-bg);
+  border: 1px dashed color-mix(in srgb, var(--color-primary) 24%, transparent);
   border-radius: var(--radius-sm);
   padding: 10px 12px;
   margin-bottom: 12px;
@@ -1069,14 +1069,14 @@ onBeforeUnmount(() => {
 .follow-item {
   padding: 8px 10px;
   border-radius: var(--radius-sm);
-  background: #fffbeb;
-  border: 1px solid #fde68a;
+  background: var(--color-warning-bg);
+  border: 1px solid var(--color-warning);
   margin-bottom: 8px;
 }
 
 .follow-item__q {
   font-size: 13px;
-  color: #92400e;
+  color: var(--color-warning);
   line-height: 1.7;
 }
 
@@ -1171,7 +1171,7 @@ onBeforeUnmount(() => {
 }
 
 .eval-card {
-  border-color: #e8eaff;
+  /* 玻璃质感由全局 .glass-card 提供 */
 }
 
 .eval-score {
@@ -1268,7 +1268,7 @@ onBeforeUnmount(() => {
   font-size: 12px;
   line-height: 1.7;
   color: var(--text-regular);
-  background: #fafafa;
+  background: var(--bg-hover);
   border-radius: var(--radius-sm);
   padding: 10px;
   margin: 0;

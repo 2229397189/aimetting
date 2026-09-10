@@ -9,27 +9,27 @@
 
       <PageLoading v-if="overviewLoading" :min-height="200" text="加载中…" />
       <div v-else class="overview-grid">
-        <div class="ov-card">
+        <div class="ov-card hover-lift">
           <div class="ov-card__value">{{ overview.userCount }}</div>
           <div class="ov-card__label">用户数</div>
         </div>
-        <div class="ov-card">
+        <div class="ov-card hover-lift">
           <div class="ov-card__value">{{ overview.sessionCount }}</div>
           <div class="ov-card__label">会话数</div>
         </div>
-        <div class="ov-card">
+        <div class="ov-card hover-lift">
           <div class="ov-card__value">{{ overview.completedCount }}</div>
           <div class="ov-card__label">完成数</div>
         </div>
-        <div class="ov-card">
+        <div class="ov-card hover-lift">
           <div class="ov-card__value">{{ (overview.completionRate * 100).toFixed(1) }}%</div>
           <div class="ov-card__label">完成率</div>
         </div>
-        <div class="ov-card">
+        <div class="ov-card hover-lift">
           <div class="ov-card__value">{{ formatScore(overview.averageScore) }}</div>
           <div class="ov-card__label">平均分</div>
         </div>
-        <div class="ov-card">
+        <div class="ov-card hover-lift">
           <div class="ov-card__value">{{ overview.questionCount }}</div>
           <div class="ov-card__label">题目数</div>
         </div>
@@ -69,15 +69,15 @@
 
       <PageLoading v-if="healthLoading" :min-height="120" text="加载中…" />
       <div v-else class="health-grid">
-        <div class="health-item">
+        <div class="health-item hover-lift">
           <div class="health-item__label">Provider</div>
           <div class="health-item__value">{{ health.provider || '-' }}</div>
         </div>
-        <div class="health-item">
+        <div class="health-item hover-lift">
           <div class="health-item__label">模型</div>
           <div class="health-item__value">{{ health.model || '-' }}</div>
         </div>
-        <div class="health-item">
+        <div class="health-item hover-lift">
           <div class="health-item__label">运行模式</div>
           <div class="health-item__value">
             <el-tag size="small" :type="health.mock ? 'warning' : 'success'">
@@ -85,7 +85,7 @@
             </el-tag>
           </div>
         </div>
-        <div class="health-item">
+        <div class="health-item hover-lift">
           <div class="health-item__label">可用性</div>
           <div class="health-item__value">
             <el-tag size="small" :type="health.available === false ? 'danger' : 'success'">
@@ -93,7 +93,7 @@
             </el-tag>
           </div>
         </div>
-        <div class="health-item">
+        <div class="health-item hover-lift">
           <div class="health-item__label">舱壁占用</div>
           <div class="health-item__value">
             {{ health.bulkheadInUse ?? '-' }} / {{ health.bulkheadTotal ?? '-' }}
@@ -323,7 +323,7 @@ onBeforeUnmount(() => {
 }
 
 .ov-card {
-  background: linear-gradient(120deg, #ffffff 0%, #f8f9ff 100%);
+  background: var(--grad-brand-soft);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
   padding: 16px 10px;
@@ -362,7 +362,7 @@ onBeforeUnmount(() => {
 }
 
 .health-item {
-  background: #fafaff;
+  background: var(--bg-hover);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-sm);
   padding: 14px;

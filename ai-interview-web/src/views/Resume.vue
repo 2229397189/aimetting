@@ -1,5 +1,6 @@
 <template>
   <div class="page-container resume-page">
+    <BackBar to="/" label="返回首页" />
     <el-tabs v-model="activeTab" class="resume-tabs">
       <!-- 粘贴文本解析 -->
       <el-tab-pane label="粘贴简历文本" name="paste">
@@ -221,6 +222,7 @@ import { charCount, formatTime, toArray } from '@/utils/format'
 import { clientToken } from '@/utils/crypto'
 import PageLoading from '@/components/PageLoading/index.vue'
 import EmptyState from '@/components/EmptyState/index.vue'
+import BackBar from '@/components/BackBar/index.vue'
 
 const activeTab = ref<'paste' | 'upload'>('paste')
 const parsing = ref<boolean>(false)

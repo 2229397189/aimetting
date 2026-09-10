@@ -1,8 +1,9 @@
 <template>
   <div class="page-container setup-page">
+    <BackBar to="/interview" label="返回会话列表" />
     <section class="card">
       <div class="card-header">
-        <div class="card-title">配置一场模拟面试</div>
+        <div class="card-title grad-text">配置一场模拟面试</div>
         <el-button text @click="resetForm">
           <el-icon><RefreshLeft /></el-icon>重置
         </el-button>
@@ -164,6 +165,7 @@ import { useConfigStore } from '@/stores/config'
 import type { CreateSessionReq, Difficulty, Direction, ResumeResp } from '@/types'
 import { DIFFICULTY_OPTIONS, PHASE_OPTIONS, splitPhase } from '@/utils/dict'
 import { difficultyTagType } from '@/utils/dict'
+import BackBar from '@/components/BackBar/index.vue'
 
 const router = useRouter()
 const configStore = useConfigStore()
