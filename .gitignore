@@ -52,4 +52,5 @@ ai-interview-server/*.log
 # ===== 构建产物 & 调试残留 =====
 ai-interview-server/src/main/resources/static/
 ai-interview-web/dist/
+ai-interview-web/dist_old_*/
 ai-interview-server/*.txt
