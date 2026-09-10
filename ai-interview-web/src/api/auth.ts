@@ -21,9 +21,9 @@ export const authApi = {
     return http.post<void>('/auth/logout')
   },
 
-  /** 用 refreshToken 换发 accessToken */
-  refresh(refreshToken: string): Promise<{ accessToken: string; refreshToken: string }> {
-    return http.post<{ accessToken: string; refreshToken: string }>('/auth/token/refresh', {
+  /** 用 refreshToken 换发 accessToken（后端返回 {token:{accessToken, refreshToken}}） */
+  refresh(refreshToken: string): Promise<{ token: { accessToken: string; refreshToken: string } }> {
+    return http.post<{ token: { accessToken: string; refreshToken: string } }>('/auth/token/refresh', {
       refreshToken,
     })
   },

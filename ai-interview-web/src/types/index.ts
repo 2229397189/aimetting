@@ -105,11 +105,21 @@ export interface TokenResp {
   expiresIn?: number
 }
 
-export interface LoginResp extends TokenResp {
-  userId: number
-  username: string
-  nickname?: string
-  role: UserRole
+export interface LoginResp {
+  /** 嵌套的 token 信息（与后端 AuthController 返回结构对齐） */
+  token: {
+    accessToken: string
+    refreshToken: string
+    tokenType?: string
+    expiresIn?: number
+  }
+  /** 嵌套的用户信息（与后端一致） */
+  user: {
+    userId: number
+    username: string
+    nickname?: string
+    role: UserRole
+  }
 }
 
 export interface UserProfile {

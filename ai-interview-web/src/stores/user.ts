@@ -43,19 +43,23 @@ export const useUserStore = defineStore('user', () => {
     else remove(StorageKey.UserInfo)
   }
 
-  /** 登录：成功后拉取完整资料 */
+  /** 登录：成功后拉取完整资料。
+   *  注意：后端 AuthController 返回的是 {code, data:{token:{accessToken,...}, user:{...}}}，
+   *  拦截器已拆掉外层 code/data，所以这里读到的就是 data 本身——即 {token, user} 嵌套结构。
+   */
   async function login(payload: LoginReq): Promise<UserProfile> {
     const resp = await authApi.login(payload)
-    setToken(resp.accessToken, resp.refreshToken)
-    // 登录接口已带用户信息，先落地，再尝试拉全量资料
-    if (resp.userId) {
+    const tk = resp?.token
+    const u = resp?.user
+    if (tk?.accessToken) setToken(tk.accessToken, tk.refreshToken)
+    if (u?.userId) {
       setUserInfo({
-        id: resp.userId,
-        username: resp.username,
-        nickname: resp.nickname || resp.username,
+        id: u.userId,
+        username: u.username,
+        nickname: u.nickname || u.username,
         email: '',
         avatar: '',
-        role: resp.role,
+        role: u.role,
         status: 1,
       })
     }
@@ -85,12 +89,13 @@ export const useUserStore = defineStore('user', () => {
     }
   }
 
-  /** 刷新 accessToken */
+  /** 刷新 accessToken。后端同样返回嵌套 {token:{accessToken, refreshToken}} */
   async function refresh(): Promise<boolean> {
     if (!refreshToken.value) return false
     try {
       const resp = await authApi.refresh(refreshToken.value)
-      setToken(resp.accessToken, resp.refreshToken)
+      const tk = resp?.token
+      if (tk?.accessToken) setToken(tk.accessToken, tk.refreshToken)
       return true
     } catch (e) {
       logout(false)
