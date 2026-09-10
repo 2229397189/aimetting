@@ -43,6 +43,97 @@
   /* 布局 */
   --header-height: 60px;
   --content-max-width: 1280px;
+
+  /* ---------------- 视觉增强层（渐变 / 玻璃 / 动效） ----------------
+   * 目标：在保留原有 token 语义的前提下增加层次感，避免"灰白 + 单色"的单调观感。
+   * 用法上遵循「克制」原则：渐变只用于品牌区与重点卡片，玻璃只用于浮层与 AI 输出区，
+   * 普通内容卡片仍走纯色 + 阴影，保证可读性与渲染性能。
+   */
+
+  /* 品牌渐变（135° 为主，浅色下更饱和） */
+  --grad-brand: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #06b6d4 100%);
+  --grad-brand-soft: linear-gradient(135deg, #eef2ff 0%, #f5f3ff 50%, #ecfeff 100%);
+  --grad-accent: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%);
+  /* 页面底色渐变：替代纯灰，制造纵深 */
+  --grad-page: radial-gradient(1200px 600px at 12% -8%, #eef2ff 0%, rgba(238, 242, 255, 0) 60%),
+    radial-gradient(1000px 520px at 92% 0%, #ecfeff 0%, rgba(236, 254, 255, 0) 55%), #f5f6fa;
+
+  /* 玻璃拟态（浮层 / AI 输出区） */
+  --glass-bg: rgba(255, 255, 255, 0.72);
+  --glass-border: rgba(255, 255, 255, 0.6);
+  --glass-blur: saturate(160%) blur(14px);
+
+  /* 阴影层次：新增 xl / glow，供重点卡片与渐变按钮使用 */
+  --shadow-xl: 0 18px 44px rgba(16, 24, 40, 0.12);
+  --shadow-glow: 0 10px 30px rgba(99, 102, 241, 0.28);
+  --shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+
+  /* 动效 token：统一时长与缓动，避免各处随手写 ms */
+  --dur-fast: 150ms;
+  --dur-base: 220ms;
+  --dur-slow: 320ms;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* 玻璃卡片：用于浮层、AI 点评区等需要"浮起来"的容器 */
+.glass-card {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md), var(--shadow-inset);
+}
+
+/* 卡片悬停微交互：轻微上浮 + 阴影加深，200-300ms 区间最自然 */
+.hover-lift {
+  transition: transform var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out),
+    border-color var(--dur-base) var(--ease-out);
+}
+
+.hover-lift:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lg);
+  border-color: color-mix(in srgb, var(--color-primary) 26%, var(--border-color));
+}
+
+/* 渐变文字：仅用于大标题，正文不用以免影响可读性 */
+.grad-text {
+  background: var(--grad-brand);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Bento 网格：不对称卡片布局，给首页/仪表盘制造节奏感 */
+.bento {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--gap-md);
+}
+
+@media (max-width: 1024px) {
+  .bento {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .bento {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* 尊重系统「减少动效」偏好 */
+@media (prefers-reduced-motion: reduce) {
+  .hover-lift {
+    transition: none;
+  }
+
+  .hover-lift:hover {
+    transform: none;
+  }
 }
 
 /* ------------------------------ 暗色模式 ------------------------------
@@ -69,6 +160,22 @@ html.dark {
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.45);
   --shadow-lg: 0 8px 28px rgba(0, 0, 0, 0.5);
+
+  /* 深色下的增强层：渐变降低饱和避免刺眼，玻璃改用深色半透明，
+     页面底色用两团微弱光晕制造纵深（OLED 上接近纯黑但仍有层次）。 */
+  --grad-brand: linear-gradient(135deg, #6366f1 0%, #a78bfa 50%, #22d3ee 100%);
+  --grad-brand-soft: linear-gradient(135deg, rgba(99, 102, 241, 0.18) 0%, rgba(167, 139, 250, 0.14) 50%,
+    rgba(34, 211, 238, 0.12) 100%);
+  --grad-accent: linear-gradient(135deg, #a78bfa 0%, #f472b6 100%);
+  --grad-page: radial-gradient(1100px 560px at 10% -10%, rgba(99, 102, 241, 0.16) 0%, rgba(15, 17, 23, 0) 60%),
+    radial-gradient(900px 480px at 90% -4%, rgba(34, 211, 238, 0.1) 0%, rgba(15, 17, 23, 0) 55%), #0f1117;
+
+  --glass-bg: rgba(24, 27, 34, 0.72);
+  --glass-border: rgba(255, 255, 255, 0.08);
+
+  --shadow-xl: 0 18px 44px rgba(0, 0, 0, 0.6);
+  --shadow-glow: 0 10px 30px rgba(99, 102, 241, 0.32);
+  --shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 html.dark body {
