@@ -53,4 +53,7 @@ public interface QuestionMapper extends com.baomidou.mybatisplus.core.mapper.Bas
 
     @Select("SELECT difficulty AS k, COUNT(*) AS cnt FROM t_question WHERE deleted = 0 AND status = 1 GROUP BY difficulty")
     List<CountRow> countByDifficulty();
+
+    @Select("SELECT title FROM t_question WHERE deleted = 0")
+    List<String> selectAllTitles();
 }
