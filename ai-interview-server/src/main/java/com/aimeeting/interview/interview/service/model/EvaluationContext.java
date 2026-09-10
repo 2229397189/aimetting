@@ -39,4 +39,7 @@ public class EvaluationContext {
     private boolean isFollowUp;
 
     private String phase;
+
+    /** 候选人简历摘要（可空，用于评分时判断简历经历的真实性 authenticity）。 */
+    private String resumeDigest;
 }

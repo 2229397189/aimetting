@@ -15,6 +15,7 @@ import com.aimeeting.interview.common.convention.exception.RemoteException;
 import com.aimeeting.interview.common.util.JsonUtil;
 import com.aimeeting.interview.common.util.Md5Util;
 import com.aimeeting.interview.interview.service.model.GeneratedQuestion;
+import com.aimeeting.interview.interview.prompt.InterviewPrompts;
 import com.aimeeting.interview.question.dao.entity.QuestionDO;
 import com.aimeeting.interview.question.dao.mapper.QuestionMapper;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -49,9 +50,11 @@ public class QuestionGenerationServiceImpl implements QuestionGenerationService 
         String sfKey = "q:" + sessionId + ":" + questionNo + ":" + direction + ":" + difficulty;
         try {
             String userPrompt = buildUserPrompt(direction, difficulty, questionNo, resumeDigest);
+            // 出题统一走「拷打型」面试官人设（含简历经历真实性拷打策略），与评分保持一致
+            String systemPrompt = InterviewPrompts.questionSystem(direction, "技术面试", difficulty);
             AiRequest req = AiRequest.builder()
                     .bizType(AiBizType.QUESTION)
-                    .systemPrompt(SYS_PROMPT)
+                    .systemPrompt(systemPrompt)
                     .userPrompt(userPrompt)
                     .model(providerFactory.currentModel(AiBizType.QUESTION))
                     .temperature(aiProperties.getTemperature())

@@ -195,6 +195,7 @@ public class ReportServiceImpl implements ReportService {
             item.setHighlights(parseStringArray(main.getHighlights()));
             item.setGaps(parseStringArray(main.getGaps()));
             item.setImprovedAnswer(main.getImprovedAnswer());
+            item.setAuthenticity(main.getAuthenticity());
             boolean answerSkipped = main.getSkipped() != null && main.getSkipped() == 1;
             item.setSkipped(questionSkipped || answerSkipped);
         } else {

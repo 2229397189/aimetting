@@ -38,6 +38,9 @@ public class EvaluationResult {
     /** 改进后的参考答案（得分 &lt; 80 时给出）。 */
     private String improvedAnswer;
 
+    /** 简历经历真实性/参与度判断（0-100，仅当回答涉及简历项目/实习时由 AI 给出，可空）。 */
+    private Integer authenticity;
+
     /** true 表示走了降级。 */
     private boolean degraded;
 }

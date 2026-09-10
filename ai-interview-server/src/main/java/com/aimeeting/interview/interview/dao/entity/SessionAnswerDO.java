@@ -50,6 +50,9 @@ public class SessionAnswerDO {
     /** Δ1：改进后的参考答案。 */
     private String improvedAnswer;
 
+    /** 简历经历真实性/参与度判断（0-100，可空，仅当回答涉及简历项目/实习时由 AI 给出）。 */
+    private Integer authenticity;
+
     /** AI 追问问题（纯 JSON 评分结果中的 followUpQuestion，原答案行有意义）。 */
     private String followUpQuestion;
 

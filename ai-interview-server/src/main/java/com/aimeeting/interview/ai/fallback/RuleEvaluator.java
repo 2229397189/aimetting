@@ -86,6 +86,38 @@ public final class RuleEvaluator {
         return r;
     }
 
+    /**
+     * 真实性降级判定（未接入大模型时）。
+     *
+     * <p>规则引擎无法真正判断候选人是否参与过简历经历，仅做粗粒度启发：
+     * 非简历相关场景返回 {@code null}（不评估）；简历相关场景下依据答案的特异性（长度、数字、具体动作词）
+     * 给一个中性偏保守的分值，并在报告中明确标注「规则降级，真实性未经大模型深挖，建议人工复核」。</p>
+     *
+     * @param answer       用户答案
+     * @param resumeDigest 简历摘要（可空；为空表示本题非简历相关）
+     * @return 0-100 真实性分值，或 null（非简历相关）
+     */
+    public static Integer fallbackAuthenticity(String answer, String resumeDigest) {
+        if (resumeDigest == null || resumeDigest.isBlank()) {
+            return null;
+        }
+        String text = answer == null ? "" : answer.trim();
+        if (text.isEmpty()) {
+            return 40;
+        }
+        int score = 55; // 中性起点：有回答但未经深度追问
+        if (text.length() >= 120) {
+            score += 10;
+        }
+        if (text.matches(".*\\d+.*")) { // 含具体数字（QPS/耗时/数据）
+            score += 10;
+        }
+        if (text.contains("我") || text.contains("我们") || text.contains("负责") || text.contains("做了")) {
+            score += 8; // 含第一人称具体动作
+        }
+        return Math.min(85, score);
+    }
+
     /* ------------------------------ 简历解析降级 ------------------------------ */
 
     public static String fallbackResumeParsed(String rawText) {

@@ -51,11 +51,12 @@ public class EvaluationServiceImpl implements EvaluationService {
 
     @Override
     public EvaluationResult evaluate(Long userId, EvaluationContext ctx, AiStreamSink sink) {
+        final String resumeDigest = ctx.getResumeDigest();
         AiRequest request = AiRequest.builder()
                 .bizType(AiBizType.EVALUATE)
                 .systemPrompt(InterviewPrompts.evaluateSystem())
                 .userPrompt(InterviewPrompts.evaluateUser(ctx.getQuestionTitle(), ctx.getReferencePoints(),
-                        ctx.getAnswer(), ctx.isFollowUp()))
+                        ctx.getAnswer(), ctx.isFollowUp(), resumeDigest))
                 .temperature(aiProperties.getTemperature())
                 .maxTokens(aiProperties.getMaxTokens())
                 .model(aiProperties.modelFor(AiBizType.EVALUATE))
@@ -150,6 +151,14 @@ public class EvaluationServiceImpl implements EvaluationService {
             comment = "AI 评分完成，综合得分 " + score + " 分。";
         }
 
+        // authenticity 为可选字段：仅当回答涉及简历项目/实习时由 AI 给出，缺失则置 null
+        Integer authenticity = null;
+        JsonNode authNode = node.get("authenticity");
+        if (authNode != null && authNode.isNumber()) {
+            int a = authNode.asInt();
+            authenticity = a < 0 ? 0 : Math.min(a, 100);
+        }
+
         return EvaluationResult.builder()
                 .score(score)
                 .comment(comment)
@@ -158,6 +167,7 @@ public class EvaluationServiceImpl implements EvaluationService {
                 .needFollowUp(needFollowUp && followUpQuestion != null && !followUpQuestion.isBlank())
                 .followUpQuestion(followUpQuestion)
                 .improvedAnswer(improvedAnswer)
+                .authenticity(authenticity)
                 .evaluatedBy(EvaluatedBy.AI)
                 .degraded(false)
                 .build();
@@ -181,6 +191,7 @@ public class EvaluationServiceImpl implements EvaluationService {
                         && ruleScore.followUpQuestion != null && !ruleScore.followUpQuestion.isBlank())
                 .followUpQuestion(ruleScore.followUpQuestion)
                 .improvedAnswer(improvedAnswer)
+                .authenticity(RuleEvaluator.fallbackAuthenticity(ctx.getAnswer(), ctx.getResumeDigest()))
                 .evaluatedBy(EvaluatedBy.RULE)
                 .degraded(true)
                 .build();

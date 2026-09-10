@@ -45,6 +45,21 @@
         <p class="overall">{{ report.overallComment }}</p>
       </section>
 
+      <!-- 简历真实性判断 -->
+      <section v-if="authenticitySummary.count > 0" class="card mt-16 auth-section">
+        <div class="card-title">简历经历真实性判断</div>
+        <div class="auth-head">
+          <div class="auth-score" :class="authClass(authenticitySummary.avg)">
+            {{ formatScore(authenticitySummary.avg) }}<span class="unit">分</span>
+          </div>
+          <div class="auth-verdict">
+            <el-tag :type="authTagType(authenticitySummary.avg)" size="small">{{ authVerdict(authenticitySummary.avg) }}</el-tag>
+            <span class="muted">基于 {{ authenticitySummary.count }} 道涉及简历经历的回答综合判定</span>
+          </div>
+        </div>
+        <p class="auth-tip">{{ authenticitySummary.tip }}</p>
+      </section>
+
       <!-- 亮点 / 待改进 / 后续行动 -->
       <section class="grid-3 mt-16">
         <div class="card list-card">
@@ -152,6 +167,11 @@
               <div class="q-card__score" :class="scoreClass(item.score)">
                 {{ formatScore(item.score) }}<span v-if="item.score != null" class="unit">分</span>
               </div>
+              <div v-if="item.authenticity != null" class="q-card__auth" :class="authClass(item.authenticity)">
+                <el-tooltip content="简历经历真实性/参与度判定：衡量你是否真正做过自己写下的项目/实习，而非答得好不好" placement="top">
+                  <span>真实度 {{ formatScore(item.authenticity) }}</span>
+                </el-tooltip>
+              </div>
             </div>
 
             <div v-if="item.phase || item.difficulty" class="q-card__tags">
@@ -245,6 +265,46 @@ function scoreClass(score?: number | null): string {
   if (n >= 60) return 'score-mid'
   return 'score-bad'
 }
+
+/* ------------------------------ 简历真实性判断 ------------------------------ */
+
+/** 真实性分值配色（与 scoreClass 一致语义：高=可信）。 */
+function authClass(score?: number | null): string {
+  return scoreClass(score)
+}
+
+function authTagType(score: number): 'success' | 'warning' | 'danger' {
+  if (score >= 80) return 'success'
+  if (score >= 60) return 'warning'
+  return 'danger'
+}
+
+function authVerdict(score: number): string {
+  if (score >= 80) return '经历真实可信'
+  if (score >= 60) return '基本可信，建议补证据'
+  return '真实性存疑，需重点复盘'
+}
+
+/** 涉及简历经历的回答的真实度均值与判定建议。 */
+const authenticitySummary = computed<{ count: number; avg: number; tip: string }>(() => {
+  const items = report.value?.items || []
+  const vals = items
+    .map((it: ReportItem) => it.authenticity)
+    .filter((v): v is number => typeof v === 'number' && !Number.isNaN(v))
+  if (!vals.length) {
+    return { count: 0, avg: 0, tip: '' }
+  }
+  const avg = Math.round(vals.reduce((a, b) => a + b, 0) / vals.length)
+  let tip: string
+  if (avg >= 80) {
+    tip = '你对简历中的项目/实习经历能讲清具体动作、技术决策、踩坑与量化结果，并接得住反向追问，面试官可判定为真正参与过。继续保持这种「能落地、有证据」的表达。'
+  } else if (avg >= 60) {
+    tip = '整体方向可信，但部分经历的细节、数据或失败场景不够充分。复盘时请为每个项目准备：你具体做了什么、遇到什么坑、怎么验证、为什么这么选——用 STAR/CAR 把故事讲实。'
+  } else {
+    tip = '多道简历相关回答经不起深挖（只重复话术、缺具体人名/数据/流程、被自己写的技术问住或前后矛盾）。强烈建议只写真正做过的经历，并为每条准备可验证的细节与反向追问的回答。'
+  }
+  return { count: vals.length, avg, tip }
+})
 
 const levelClass = computed<string>(() => {
   const lvl = scoreLevel(report.value?.totalScore)
@@ -583,6 +643,17 @@ onMounted(async () => {
   margin-left: 2px;
 }
 
+.q-card__auth {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--color-primary-bg);
+  border: 1px solid var(--border-light);
+  cursor: default;
+}
+
 .score-good {
   color: var(--color-success);
 }
@@ -591,6 +662,44 @@ onMounted(async () => {
 }
 .score-bad {
   color: var(--color-danger);
+}
+
+.auth-section {
+  border-left: 4px solid var(--color-primary);
+}
+
+.auth-head {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 12px 0 8px;
+}
+
+.auth-score {
+  font-size: 30px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.auth-score .unit {
+  font-size: 13px;
+  font-weight: 400;
+  margin-left: 2px;
+}
+
+.auth-verdict {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.auth-tip {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--text-regular);
 }
 
 .q-card__tags {

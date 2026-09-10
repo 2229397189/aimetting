@@ -414,6 +414,8 @@ export interface ReportItem {
   difficulty?: Difficulty
   skipped?: boolean
   phase?: InterviewPhase
+  /** 简历经历真实性/参与度判断（0-100，可空） */
+  authenticity?: number
 }
 
 export interface ReportDetail {

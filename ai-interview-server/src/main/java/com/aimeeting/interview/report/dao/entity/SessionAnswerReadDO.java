@@ -35,6 +35,9 @@ public class SessionAnswerReadDO {
 
     private String evaluatedBy;
 
+    /** 简历经历真实性/参与度判断（0-100，可空）。 */
+    private Integer authenticity;
+
     private Integer followUpCount;
 
     private Integer skipped;

@@ -75,6 +75,7 @@ CREATE TABLE IF NOT EXISTS t_question (
 -- ----------------------------------------------------------------------------
 -- 0. 历史库表增量迁移（幂等，仅当列不存在时添加）
 ALTER TABLE t_session_answer ADD COLUMN IF NOT EXISTS follow_up_question VARCHAR(2000) DEFAULT NULL;
+ALTER TABLE t_session_answer ADD COLUMN IF NOT EXISTS authenticity INT DEFAULT NULL COMMENT '简历经历真实性/参与度判断 0-100';
 -- ============================================================================
 
 
@@ -153,6 +154,7 @@ CREATE TABLE IF NOT EXISTS t_session_answer (
   gaps               VARCHAR(2000) DEFAULT NULL,
   improved_answer    VARCHAR(4000) DEFAULT NULL,
   follow_up_question VARCHAR(2000) DEFAULT NULL,
+  authenticity       INT          DEFAULT NULL COMMENT '简历经历真实性/参与度判断 0-100',
   evaluated_by       VARCHAR(16)  DEFAULT NULL,
   follow_up_count    INT          NOT NULL DEFAULT 0,
   skipped            INT          NOT NULL DEFAULT 0,

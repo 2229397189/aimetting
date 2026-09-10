@@ -69,6 +69,8 @@ public class AnswerServiceImpl implements AnswerService {
 
     private final InterviewProperties interviewProperties;
 
+    private final com.aimeeting.interview.resume.service.ResumeService resumeService;
+
     @Override
     public void submit(Long userId, Long sessionId, SubmitAnswerReq req, String clientToken, SseEmitter emitter) {
         doSubmit(userId, sessionId, req.getSessionQuestionId(), req.getContent(),
@@ -134,6 +136,16 @@ public class AnswerServiceImpl implements AnswerService {
 
             sseEmitterManager.send(emitter, buildProgress(seq, "AI 正在评估你的回答…", requestId, sessionId, q.getQuestionNo()));
 
+            // 取简历摘要用于评分时判断经历真实性（authenticity）；无简历则留空
+            String resumeDigest = null;
+            if (session.getResumeId() != null) {
+                try {
+                    resumeDigest = resumeService.digestForPrompt(userId, session.getResumeId());
+                } catch (Exception e) {
+                    log.warn("[Answer] 获取简历摘要失败，跳过 authenticity 评估: {}", e.getMessage());
+                }
+            }
+
             EvaluationContext ctx = EvaluationContext.builder()
                     .sessionId(sessionId)
                     .sessionQuestionId(sessionQuestionId)
@@ -143,6 +155,7 @@ public class AnswerServiceImpl implements AnswerService {
                     .answer(content)
                     .isFollowUp(isFollowUp)
                     .phase(q.getPhase())
+                    .resumeDigest(resumeDigest)
                     .build();
 
             StringBuilder commentBuf = new StringBuilder();
@@ -168,6 +181,7 @@ public class AnswerServiceImpl implements AnswerService {
             ans.setGaps(toJson(result.getGaps()));
             ans.setImprovedAnswer(result.getImprovedAnswer());
             ans.setFollowUpQuestion(result.getFollowUpQuestion());
+            ans.setAuthenticity(result.getAuthenticity());
             ans.setEvaluatedBy(result.getEvaluatedBy() == null ? null : result.getEvaluatedBy().name());
             answerMapper.updateById(ans);
 
