@@ -45,13 +45,29 @@ if [ -n "$OLD_PID" ]; then
   sleep 3
 fi
 
-# 4) 生成 JWT 密钥（仅首次）
+# 4) 生成 / 读取本地密钥文件（.env.local 不进版本库）
+#    首轮只自动生 JWT 密钥；DeepSeek API Key 需自行填一行 AI_INTERVIEW_AI_API_KEY=sk-xxx。
+#    未填时回落到 jar 内置 key（便于快速验证），但生产环境请务必填入自有 key。
 if [ ! -f "$DEPLOY_DIR/.env.local" ]; then
   JWT_SECRET=$(openssl rand -base64 48 2>/dev/null | tr -d '\n' || head -c 64 /dev/urandom | base64)
-  echo "AI_INTERVIEW_JWT_SECRET=$JWT_SECRET" > "$DEPLOY_DIR/.env.local"
-  echo "==> 已生成 JWT 密钥并写入 .env.local"
+  {
+    echo "AI_INTERVIEW_JWT_SECRET=$JWT_SECRET"
+    echo "# 请填入你自己的 DeepSeek API Key（不要用仓库里泄露过的那个）"
+    echo "AI_INTERVIEW_AI_API_KEY="
+  } > "$DEPLOY_DIR/.env.local"
+  echo "==> 已生成 .env.local（请编辑填入 AI_INTERVIEW_AI_API_KEY）"
 fi
-JWT_SECRET=$(grep AI_INTERVIEW_JWT_SECRET "$DEPLOY_DIR/.env.local" | cut -d= -f2-)
+# export 为环境变量，由 application.yml 的 ${AI_INTERVIEW_*} 占位符读取
+set -a
+. "$DEPLOY_DIR/.env.local"
+set +a
+# 关键：若 API Key 为空值则必须 unset。空字符串会被 Spring 绑定成 apiKey=""，
+# 进而触发 isMockMode() 判定为 true，导致整站静默降级为规则评分（表面 HTTP 200 一切正常）。
+if [ -z "${AI_INTERVIEW_AI_API_KEY:-}" ]; then
+  unset AI_INTERVIEW_AI_API_KEY
+  echo "==> 警告：AI_INTERVIEW_AI_API_KEY 未配置，将回落到 jar 内置 Key"
+fi
+JWT_SECRET="$AI_INTERVIEW_JWT_SECRET"
 
 # 5) 启动（H2 文件库 + 真实 DeepSeek 评分）
 #    注意：JWT 密钥的配置路径是 ai-interview.jwt.secret，
