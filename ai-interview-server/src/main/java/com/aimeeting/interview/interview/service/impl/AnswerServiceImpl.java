@@ -6,6 +6,8 @@ import com.aimeeting.interview.common.convention.exception.ServiceException;
 import com.aimeeting.interview.common.idempotent.IdempotencyService;
 import com.aimeeting.interview.common.idempotent.IdempotentStage;
 import com.aimeeting.interview.common.idempotent.TryStartResult;
+import com.aimeeting.interview.ai.agent.AgentContext;
+import com.aimeeting.interview.ai.agent.InterviewAgent;
 import com.aimeeting.interview.common.util.JsonUtil;
 import com.aimeeting.interview.common.util.MdcUtil;
 import com.aimeeting.interview.config.InterviewProperties;
@@ -29,6 +31,8 @@ import com.aimeeting.interview.interview.service.SseEmitterManager;
 import com.aimeeting.interview.interview.service.model.AnswerReplay;
 import com.aimeeting.interview.interview.service.model.EvaluationContext;
 import com.aimeeting.interview.interview.service.model.EvaluationResult;
+import com.aimeeting.interview.interview.service.model.FollowUpQuestion;
+import com.aimeeting.interview.interview.service.model.FollowUpReq;
 import com.aimeeting.interview.interview.service.sse.CommentPayload;
 import com.aimeeting.interview.interview.service.sse.DonePayload;
 import com.aimeeting.interview.interview.service.sse.FollowUpPayload;
@@ -70,6 +74,8 @@ public class AnswerServiceImpl implements AnswerService {
     private final InterviewProperties interviewProperties;
 
     private final com.aimeeting.interview.resume.service.ResumeService resumeService;
+
+    private final InterviewAgent<FollowUpReq, FollowUpQuestion> followUpAgent;
 
     @Override
     public void submit(Long userId, Long sessionId, SubmitAnswerReq req, String clientToken, SseEmitter emitter) {
@@ -180,7 +186,9 @@ public class AnswerServiceImpl implements AnswerService {
             ans.setHighlights(toJson(result.getHighlights()));
             ans.setGaps(toJson(result.getGaps()));
             ans.setImprovedAnswer(result.getImprovedAnswer());
-            ans.setFollowUpQuestion(result.getFollowUpQuestion());
+            // followUpQuestion 改由 FollowUpAgent 生成；此处先置空，FOLLOW_UP 分支再覆盖
+            String followUpQuestion = null;
+            ans.setFollowUpQuestion(null);
             ans.setAuthenticity(result.getAuthenticity());
             ans.setEvaluatedBy(result.getEvaluatedBy() == null ? null : result.getEvaluatedBy().name());
             answerMapper.updateById(ans);
@@ -222,8 +230,34 @@ public class AnswerServiceImpl implements AnswerService {
 
             int emitFollowUpCount = isFollowUp ? parentFollowUpCount : 1;
             if ("FOLLOW_UP".equals(nextAction)) {
+                // SSE 顺序不变：progress → comment → score → follow_up → done
+                AgentContext agentContext = AgentContext.builder()
+                        .userId(userId)
+                        .sessionId(sessionId)
+                        .phase(q.getPhase())
+                        .resumeDigest(resumeDigest)
+                        .referencePoints(parseList(q.getReferencePoints()))
+                        .originalAnswer(content)
+                        .followUpCount(effectiveCount)
+                        .maxFollowUp(maxFollowUp)
+                        .build();
+                FollowUpReq fuReq = FollowUpReq.builder()
+                        .userId(userId)
+                        .sessionId(sessionId)
+                        .sessionQuestionId(sessionQuestionId)
+                        .parentAnswerId(parentAnswerId)
+                        .questionTitle(q.getTitle())
+                        .referencePoints(parseList(q.getReferencePoints()))
+                        .originalAnswer(content)
+                        .followUpCount(effectiveCount)
+                        .maxFollowUp(maxFollowUp)
+                        .build();
+                FollowUpQuestion fu = followUpAgent.run(agentContext, fuReq);
+                followUpQuestion = fu.getQuestion();
+                ans.setFollowUpQuestion(followUpQuestion);
+                answerMapper.updateById(ans);
                 sseEmitterManager.send(emitter, buildFollowUp(seq, answerId, parentAnswerId, sessionQuestionId,
-                        result.getFollowUpQuestion(), emitFollowUpCount, maxFollowUp, requestId, sessionId, q.getQuestionNo()));
+                        followUpQuestion, emitFollowUpCount, maxFollowUp, requestId, sessionId, q.getQuestionNo()));
             }
 
             AnswerReplay replay = AnswerReplay.builder()
@@ -242,7 +276,7 @@ public class AnswerServiceImpl implements AnswerService {
                     .currentIndex(session.getCurrentIndex())
                     .totalQuestion(session.getTotalQuestion())
                     .reportId(null)
-                    .followUpQuestion(result.getFollowUpQuestion())
+                    .followUpQuestion(followUpQuestion)
                     .followUpCount(emitFollowUpCount)
                     .maxFollowUp(maxFollowUp)
                     .build();

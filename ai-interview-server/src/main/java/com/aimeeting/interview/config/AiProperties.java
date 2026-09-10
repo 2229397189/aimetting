@@ -89,7 +89,33 @@ public class AiProperties {
      * @return mock 模式返回 true
      */
     public boolean isMockMode() {
-        return "mock".equalsIgnoreCase(provider) || apiKey == null || apiKey.isBlank();
+        return "mock".equalsIgnoreCase(provider) || resolvedApiKey() == null || resolvedApiKey().isBlank();
+    }
+
+    /**
+     * 取业务场景使用的采样温度（M1 多智能体参数化）。
+     *
+     * @param bizType 业务类型
+     * @return 温度值
+     */
+    public double temperatureFor(AiBizType bizType) {
+        return switch (bizType) {
+            case EVALUATE -> 0.2;
+            case FOLLOW_UP -> 0.5;
+            case QUESTION -> 0.7;
+            case RESUME -> 0.3;
+            case REPORT -> 0.5;
+        };
+    }
+
+    /**
+     * 解析最终使用的 API Key：环境变量 {@code DEEPSEEK_API_KEY} 优先于 yaml 配置（便于部署覆盖）。
+     *
+     * @return 实际使用的 apiKey
+     */
+    public String resolvedApiKey() {
+        String env = System.getenv("DEEPSEEK_API_KEY");
+        return (env != null && !env.isBlank()) ? env : apiKey;
     }
 
     /**
