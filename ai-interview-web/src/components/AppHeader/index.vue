@@ -91,6 +91,7 @@ import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessageBox } from 'element-plus'
 import { useUserStore } from '@/stores/user'
+import { useThemeStore } from '@/stores/theme'
 
 interface MenuItem {
   path: string
