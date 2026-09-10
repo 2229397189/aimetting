@@ -20,6 +20,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
@@ -36,7 +37,8 @@ import org.springframework.stereotype.Service;
  *   <li><b>熔断</b>：滑动窗口内失败率超阈值直接快速失败（C0501）。</li>
  *   <li><b>舱壁</b>：并发配额打满直接拒绝（C0502）。</li>
  *   <li><b>超时</b>：按阶段超时时间中断调用（C0504）。</li>
- *   <li><b>重试</b>：最多 2 次，退避 500ms -&gt; 1500ms，仅 TIMEOUT / UNAVAILABLE 可重试；
+ *   <li><b>重试</b>：最多 {@code maxRetries} 次，指数退避并叠加 Equal Jitter 抖动
+ *       （避免重试风暴），仅 TIMEOUT / UNAVAILABLE 可重试；
  *       另对 INVALID_RESPONSE 追加一次「严格按格式输出」的重试。</li>
  *   <li><b>日志</b>：异步落 t_ai_call_log（摘要截断 512）。</li>
  *   <li><b>失败</b>：统一抛 {@link RemoteException}，由上层决定降级。</li>
@@ -51,6 +53,15 @@ public class AiGuardService {
 
     /** 流式回放分片间隔（毫秒）。 */
     private static final long REPLAY_INTERVAL_MS = 30L;
+
+    /** 退避基数默认值：配置缺失或非法时兜底 500ms。 */
+    private static final long DEFAULT_BACKOFF_BASE_MILLIS = 500L;
+
+    /** 退避上限，防止 attempt 较大时指数增长到不可接受的等待（30s）。 */
+    private static final long MAX_BACKOFF_MILLIS = 30_000L;
+
+    /** 位移上限：超过此 attempt 不再做 {@code 1 << attempt} 计算，直接取上限，避免整型溢出。 */
+    private static final int MAX_BACKOFF_SHIFT = 6;
 
     private final AiProvider provider;
     private final AiProperties props;
@@ -372,9 +383,31 @@ public class AiGuardService {
     /**
      * 指数退避：500ms -&gt; 1500ms。
      */
+    /**
+     * 计算第 {@code attempt} 次重试的退避休眠时长：指数退避 + 抖动（Equal Jitter）。
+     *
+     * <p><b>为什么要加抖动</b>：纯指数退避 {@code base * (2^(attempt+1) - 1)} 是确定性的，
+     * 同一时刻失败的一批请求会在完全相同的未来时刻集体重试，形成「重试风暴」（thundering herd），
+     * 反而把正在恢复的下游服务再次打垮——这是重试治理里最经典的坑。
+     *
+     * <p>这里采用 Equal Jitter：把退避值劈成两半，一半作为固定基线保住「越往后等越久」的增长趋势，
+     * 另一半随机化以打散重试时刻。同时对上限封顶，避免 attempt 偏大时位移溢出导致负数或超长等待。
+     *
+     * @param attempt 当前重试次数（从 0 开始）
+     * @return 实际休眠毫秒数
+     */
     private long backoffMillis(int attempt) {
-        long base = props.getRetryBaseDelayMillis() <= 0 ? 500L : props.getRetryBaseDelayMillis();
-        return base * ((1L << (attempt + 1)) - 1L);
+        long base = props.getRetryBaseDelayMillis() <= 0
+                ? DEFAULT_BACKOFF_BASE_MILLIS : props.getRetryBaseDelayMillis();
+        long expBackoff;
+        if (attempt >= MAX_BACKOFF_SHIFT) {
+            expBackoff = MAX_BACKOFF_MILLIS;
+        } else {
+            expBackoff = base * ((1L << (attempt + 1)) - 1L);
+            expBackoff = Math.min(expBackoff, MAX_BACKOFF_MILLIS);
+        }
+        long half = Math.max(1L, expBackoff / 2);
+        return half + ThreadLocalRandom.current().nextLong(half + 1);
     }
 
     /**
