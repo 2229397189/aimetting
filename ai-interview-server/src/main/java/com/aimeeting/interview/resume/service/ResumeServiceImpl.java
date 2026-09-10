@@ -102,6 +102,15 @@ public class ResumeServiceImpl implements ResumeService {
         if (!aiProperties.isMockMode() && !looksLikeResume(content)) {
             throw new ClientException("内容看起来不是简历，请检查后重试", BaseErrorCode.NOT_RESUME_TEXT);
         }
+        // 内容级去重：同一用户上传过完全一致的简历且已解析完成，直接复用，避免重复打 DeepSeek（简历解析慢的主要来源之一）
+        ResumeDO existed = resumeMapper.selectOne(Wrappers.<ResumeDO>lambdaQuery()
+                .eq(ResumeDO::getUserId, userId)
+                .eq(ResumeDO::getRawText, content)
+                .last("LIMIT 1"));
+        if (existed != null && existed.getParsedBy() != null) {
+            log.info("[Resume] 命中相同简历内容，复用已解析结果 resumeId={}", existed.getId());
+            return existed.getId();
+        }
         // 幂等：命中回放键直接返回上次结果
         var idem = idempotencyService.tryStart(IdempotentStage.RESUME_PARSE, userId, "resume:parse",
                 clientToken, new TypeReference<Long>() {});
@@ -289,7 +298,7 @@ public class ResumeServiceImpl implements ResumeService {
                 .userPrompt(userPrompt)
                 .model(aiProperties.getModel())
                 .temperature(0.3)
-                .maxTokens(1500)
+                .maxTokens(900)
                 .jsonMode(true)
                 .build();
     }
