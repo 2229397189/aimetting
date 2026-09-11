@@ -153,6 +153,10 @@
   .hover-lift:hover {
     transform: none;
   }
+
+  html.dark body::before {
+    animation: none;
+  }
 }
 
 /* ------------------------------ 暗色模式 ------------------------------
@@ -160,50 +164,89 @@
  * 这里补充业务自定义变量，保证全站（非 EP 组件）无白底黑字死角。
  */
 html.dark {
-  --color-primary: #6366f1;
-  --color-primary-light: #818cf8;
-  --color-primary-dark: #4f46e5;
-  --color-primary-bg: rgba(99, 102, 241, 0.16);
+  /* 青蓝霓虹主色：sky/cyan + 紫点缀 */
+  --color-primary: #38bdf8;
+  --color-primary-light: #7dd3fc;
+  --color-primary-dark: #0ea5e9;
+  --color-primary-bg: rgba(56, 189, 248, 0.16);
 
-  --color-success-bg: rgba(22, 163, 74, 0.18);
-  --color-warning-bg: rgba(217, 119, 6, 0.18);
-  --color-danger-bg: rgba(220, 38, 38, 0.18);
+  --color-success: #34d399;
+  --color-warning: #fbbf24;
+  --color-danger: #f87171;
+  --color-info: #38bdf8;
 
-  --text-primary: #e5eaf3;
-  --text-regular: #cfd3dc;
-  --text-secondary: #a3a6ad;
-  --text-placeholder: #8d9095;
+  --color-success-bg: rgba(52, 211, 153, 0.18);
+  --color-warning-bg: rgba(251, 191, 36, 0.16);
+  --color-danger-bg: rgba(248, 113, 113, 0.18);
 
-  --bg-page: #0f1117;
-  --bg-card: #181b22;
-  --bg-hover: #1f232c;
-  --border-color: #2a2f3a;
-  --border-light: #232830;
+  --text-primary: #e6f1ff;
+  --text-regular: #b8c4d6;
+  --text-secondary: #8390a8;
+  --text-placeholder: #5e6b85;
 
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
-  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.45);
-  --shadow-lg: 0 8px 28px rgba(0, 0, 0, 0.5);
+  /* 深空底色 + 次级表面 */
+  --bg-page: #070b14;
+  --bg-card: #0e1422;
+  --bg-hover: #131c2e;
+  --bg-secondary: #131c2e;
+  --border-color: #1e2a40;
+  --border-light: #18223a;
 
-  /* 深色下的增强层：渐变降低饱和避免刺眼，玻璃改用深色半透明，
-     页面底色用两团微弱光晕制造纵深（OLED 上接近纯黑但仍有层次）。 */
-  --grad-brand: linear-gradient(135deg, #6366f1 0%, #a78bfa 50%, #22d3ee 100%);
-  --grad-brand-soft: linear-gradient(135deg, rgba(99, 102, 241, 0.18) 0%, rgba(167, 139, 250, 0.14) 50%,
-    rgba(34, 211, 238, 0.12) 100%);
-  --grad-accent: linear-gradient(135deg, #a78bfa 0%, #f472b6 100%);
-  --grad-page: radial-gradient(1100px 560px at 10% -10%, rgba(99, 102, 241, 0.16) 0%, rgba(15, 17, 23, 0) 60%),
-    radial-gradient(900px 480px at 90% -4%, rgba(34, 211, 238, 0.1) 0%, rgba(15, 17, 23, 0) 55%), #0f1117;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.55);
+  --shadow-lg: 0 8px 28px rgba(0, 0, 0, 0.6);
 
-  --glass-bg: rgba(24, 27, 34, 0.72);
-  --glass-border: rgba(255, 255, 255, 0.08);
+  /* 深色下的品牌层：青蓝→紫霓虹渐变；页面底色用两团双向光晕制造纵深 */
+  --grad-brand: linear-gradient(135deg, #22d3ee 0%, #38bdf8 45%, #818cf8 100%);
+  --grad-brand-soft: linear-gradient(135deg, rgba(34, 211, 238, 0.16) 0%, rgba(56, 189, 248, 0.12) 50%,
+    rgba(129, 139, 248, 0.12) 100%);
+  --grad-accent: linear-gradient(135deg, #22d3ee 0%, #818cf8 100%);
+  --grad-page: radial-gradient(1100px 600px at 8% -10%, rgba(34, 211, 238, 0.14) 0%, rgba(7, 11, 20, 0) 60%),
+    radial-gradient(900px 520px at 92% -4%, rgba(129, 139, 248, 0.12) 0%, rgba(7, 11, 20, 0) 55%), #070b14;
 
-  --shadow-xl: 0 18px 44px rgba(0, 0, 0, 0.6);
-  --shadow-glow: 0 10px 30px rgba(99, 102, 241, 0.32);
-  --shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  /* 卡片标题左侧的霓虹渐变短线 */
+  --tech-line: linear-gradient(90deg, #22d3ee, #818cf8);
+
+  --glass-bg: rgba(14, 20, 34, 0.66);
+  --glass-border: rgba(120, 190, 255, 0.14);
+
+  --shadow-xl: 0 18px 44px rgba(0, 0, 0, 0.65);
+  --shadow-glow: 0 0 24px rgba(56, 189, 248, 0.35);
+  --shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
 html.dark body {
   background: var(--grad-page);
   color: var(--text-primary);
+}
+
+/* 科技感底纹：固定网格 + 缓慢漂移（不挡交互），顶部渐隐避免糊住内容 */
+html.dark body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: linear-gradient(rgba(120, 190, 255, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(120, 190, 255, 0.045) 1px, transparent 1px);
+  background-size: 46px 46px;
+  -webkit-mask-image: radial-gradient(ellipse 78% 55% at 50% -6%, #000 22%, transparent 95%);
+  mask-image: radial-gradient(ellipse 78% 55% at 50% -6%, #000 22%, transparent 95%);
+  animation: grid-drift 26s linear infinite;
+}
+
+@keyframes grid-drift {
+  from {
+    background-position: 0 0, 0 0;
+  }
+  to {
+    background-position: 46px 46px, 46px 46px;
+  }
+}
+
+/* 暗色下 app-root 透出 body 的科技底纹（覆盖 App.vue 的 scoped 背景） */
+html.dark .app-root {
+  background: transparent !important;
 }
 
 /* 暗色下滚动条配色 */
@@ -247,6 +290,52 @@ html.dark {
     background: #0b0d12 !important;
     border-color: var(--border-color) !important;
     color: var(--text-regular) !important;
+  }
+
+  /* 写死浅色表面的深色兜底 */
+  .followup {
+    background: var(--bg-secondary) !important;
+    border-color: var(--border-color) !important;
+  }
+
+  .raw-text {
+    background: var(--bg-hover) !important;
+    border-color: var(--border-color) !important;
+  }
+
+  /* 卡片霓虹描边 + 悬停青色辉光 */
+  .card,
+  .el-card {
+    border-color: var(--border-color) !important;
+    box-shadow: var(--shadow-sm), 0 0 0 1px rgba(56, 189, 248, 0.04) !important;
+  }
+
+  .card.hover-lift:hover,
+  .el-card:hover {
+    border-color: rgba(56, 189, 248, 0.4) !important;
+    box-shadow: var(--shadow-md), 0 0 22px rgba(56, 189, 248, 0.18) !important;
+  }
+
+  /* 卡片标题左侧霓虹短线 */
+  .card-title::before {
+    background: var(--tech-line);
+    box-shadow: 0 0 8px rgba(34, 211, 238, 0.6);
+  }
+
+  /* 顶栏玻璃化 */
+  .app-header {
+    background: rgba(7, 11, 20, 0.72) !important;
+    backdrop-filter: saturate(160%) blur(12px);
+    -webkit-backdrop-filter: saturate(160%) blur(12px);
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  /* Logo 发光 */
+  .logo-mark {
+    background: var(--grad-brand);
+    color: #04121f;
+    font-weight: 800;
+    box-shadow: 0 0 16px rgba(34, 211, 238, 0.5);
   }
 }
 
