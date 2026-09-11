@@ -63,9 +63,9 @@ function onClose(): void {
   gap: 10px;
   padding: 10px 14px;
   border-radius: var(--radius-md);
-  background: var(--color-warning-bg);
-  border: 1px solid color-mix(in srgb, var(--color-warning) 45%, transparent);
-  color: var(--color-warning);
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  color: #92400e;
 }
 
 .degraded-tip__icon {

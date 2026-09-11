@@ -29,10 +29,8 @@ export const useThemeStore = defineStore('theme', {
   actions: {
     /** 应用启动时调用：读取持久化值或跟随系统 */
     init(): void {
-      // 默认深色科技风：无持久化选择时直接进深色（不再跟随系统浅色），
-      // 用户随时可点顶栏日/夜按钮切回浅色并持久化。
       const saved = localStorage.getItem(STORAGE_KEY)
-      const dark = saved ? saved === 'dark' : true
+      const dark = saved ? saved === 'dark' : systemPrefersDark()
       this.isDark = dark
       applyDark(dark)
     },
