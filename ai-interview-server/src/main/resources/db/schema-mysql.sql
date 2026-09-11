@@ -183,6 +183,7 @@ CREATE TABLE IF NOT EXISTS t_ai_call_log (
   id               BIGINT      NOT NULL AUTO_INCREMENT,
   user_id          BIGINT      DEFAULT NULL,
   biz_type         VARCHAR(32) NOT NULL COMMENT 'QUESTION|EVALUATE|FOLLOW_UP|RESUME|REPORT',
+  agent_id         VARCHAR(32) DEFAULT NULL COMMENT '业务 Agent：INTERVIEWER|EVALUATOR|FOLLOW_UP|RESUME_ANALYST|REPORTER',
   provider         VARCHAR(32) NOT NULL,
   model            VARCHAR(64) DEFAULT NULL,
   request_digest   VARCHAR(512) DEFAULT NULL,
@@ -197,6 +198,7 @@ CREATE TABLE IF NOT EXISTS t_ai_call_log (
   create_time      DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   KEY idx_biz_time (biz_type, create_time),
+  KEY idx_agent_time (agent_id, create_time),
   KEY idx_user_time (user_id, create_time),
   KEY idx_success (success, create_time)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI调用日志';
@@ -253,6 +255,14 @@ SET @sql2 = IF(@cnt2 = 0, 'ALTER TABLE t_session_answer ADD COLUMN authenticity 
 PREPARE stmt2 FROM @sql2;
 EXECUTE stmt2;
 DEALLOCATE PREPARE stmt2;
+
+-- 历史库表增量迁移：仅当列不存在时添加 agent_id（M3 按 Agent 维度可观测）
+SET @cnt3 = (SELECT COUNT(*) FROM information_schema.columns
+             WHERE table_schema = @db AND table_name = 't_ai_call_log' AND column_name = 'agent_id');
+SET @sql3 = IF(@cnt3 = 0, 'ALTER TABLE t_ai_call_log ADD COLUMN agent_id VARCHAR(32) DEFAULT NULL COMMENT ''业务 Agent：INTERVIEWER|EVALUATOR|FOLLOW_UP|RESUME_ANALYST|REPORTER''', 'SELECT 1');
+PREPARE stmt3 FROM @sql3;
+EXECUTE stmt3;
+DEALLOCATE PREPARE stmt3;
 
 
 -- 10. 字典表（M8，方向/难度展示）

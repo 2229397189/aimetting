@@ -84,6 +84,13 @@ public class AiProperties {
     private int maxTokens = 2048;
 
     /**
+     * 评分一致性采样双评比例（0~1，M2）。0 表示关闭（默认），1 表示全量双评。
+     *
+     * <p>命中采样时对同一答案追加一次静默副评，仅用于观测评分偏差，不影响主评分数与 SSE 事件序。
+     */
+    private double consistencySampleRate = 0.0;
+
+    /**
      * 是否 mock 模式：provider 显式为 mock 或 apiKey 为空（BR-14）。
      *
      * @return mock 模式返回 true

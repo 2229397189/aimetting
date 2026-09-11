@@ -61,7 +61,7 @@ public class AiCallLogService {
     }
 
     /**
-     * 分页查询调用日志。
+     * 分页查询调用日志（兼容旧签名，等价于不按 Agent 过滤）。
      *
      * @param pageNum  页码（1-based）
      * @param pageSize 页大小
@@ -70,11 +70,28 @@ public class AiCallLogService {
      * @return 分页结果
      */
     public IPage<AiCallLogDO> page(long pageNum, long pageSize, String bizType, Boolean success) {
+        return page(pageNum, pageSize, bizType, null, success);
+    }
+
+    /**
+     * 分页查询调用日志（M3 增加 Agent 维度过滤，支持按 Agent 可观测）。
+     *
+     * @param pageNum  页码（1-based）
+     * @param pageSize 页大小
+     * @param bizType  业务类型（可空）
+     * @param agentId  业务 Agent 维度（可空）
+     * @param success  是否成功（可空）
+     * @return 分页结果
+     */
+    public IPage<AiCallLogDO> page(long pageNum, long pageSize, String bizType, String agentId, Boolean success) {
         long pn = pageNum < 1 ? 1 : pageNum;
         long ps = pageSize < 1 ? 10 : Math.min(pageSize, 200);
         LambdaQueryWrapper<AiCallLogDO> wrapper = new LambdaQueryWrapper<>();
         if (bizType != null && !bizType.isBlank()) {
             wrapper.eq(AiCallLogDO::getBizType, bizType);
+        }
+        if (agentId != null && !agentId.isBlank()) {
+            wrapper.eq(AiCallLogDO::getAgentId, agentId);
         }
         if (success != null) {
             wrapper.eq(AiCallLogDO::getSuccess, success ? 1 : 0);

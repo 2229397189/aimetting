@@ -1,6 +1,13 @@
 package com.aimeeting.interview.report.service;
 
 import com.aimeeting.interview.config.AiProperties;
+import com.aimeeting.interview.ai.agent.AgentContext;
+import com.aimeeting.interview.ai.agent.AgentId;
+import com.aimeeting.interview.ai.agent.skill.AgentSkill;
+import com.aimeeting.interview.ai.agent.skill.AgentTool;
+import com.aimeeting.interview.ai.agent.skill.impl.ActionPlanSkill;
+import com.aimeeting.interview.ai.agent.skill.impl.JdMatchSkill;
+import com.aimeeting.interview.resume.service.ResumeService;
 import com.aimeeting.interview.ai.fallback.RuleEvaluator;
 import com.aimeeting.interview.ai.guard.AiGuardService;
 import com.aimeeting.interview.ai.model.AiBizType;
@@ -51,6 +58,9 @@ public class ReportServiceImpl implements ReportService {
     private final ReportReadMapper reportReadMapper;
     private final AiGuardService aiGuardService;
     private final AiProperties aiProperties;
+    private final ActionPlanSkill actionPlanSkill;
+    private final JdMatchSkill jdMatchSkill;
+    private final ResumeService resumeService;
 
     @Override
     public Long generate(Long userId, Long sessionId) {
@@ -89,7 +99,7 @@ public class ReportServiceImpl implements ReportService {
         try {
             raw = aiGuardService.execute(AiStage.REPORT_GEN,
                     "report:" + sessionId, userId,
-                    buildReportRequest(meta, items, totalScore),
+                    buildReportRequest(userId, meta, items, totalScore),
                     AiTextResult::getContent);
             applyAiResult(report, raw, totalScore.intValue(), scores);
         } catch (Exception e) {
@@ -215,7 +225,8 @@ public class ReportServiceImpl implements ReportService {
         Map<String, Integer> normalized = ReportDimension.normalize(dims, totalScore);
         List<String> highlights = parseStringList(root.get("highlights"));
         List<String> improvements = parseStringList(root.get("improvements"));
-        List<String> actions = parseStringList(root.get("actions"));
+        // M3：行动建议先过 ActionPlanSkill 结构清洗（去空白/去重/限长限条数），再走既有校验
+        List<String> actions = actionPlanSkill.refine(parseStringList(root.get("actions")));
         String overall = root.get("overallComment") instanceof String ? (String) root.get("overallComment") : null;
         // 校验不足则降级
         if (highlights.size() < 2 || improvements.size() < 3 || actions.size() < 3 || overall == null) {
@@ -259,27 +270,78 @@ public class ReportServiceImpl implements ReportService {
         report.setGeneratedBy("RULE");
     }
 
-    private AiRequest buildReportRequest(SessionMetaReadDO meta, List<ReportItem> items, BigDecimal totalScore) {
+    private AiRequest buildReportRequest(Long userId, SessionMetaReadDO meta, List<ReportItem> items,
+                                         BigDecimal totalScore) {
         String directions = meta.getDirections() == null ? "" : meta.getDirections();
         String difficulty = meta.getDifficulty() == null ? "" : meta.getDifficulty();
         String itemsJson = JsonUtil.toJson(items);
-        String userPrompt = String.format(
+        AgentContext agentContext = AgentContext.builder()
+                .userId(userId)
+                .sessionId(meta.getId())
+                .resumeDigest(safeResumeDigest(userId, meta.getResumeId()))
+                .jdText(meta::getJdText)
+                .build();
+        StringBuilder systemPrompt = new StringBuilder(
+                "你是资深技术面试官，正在为候选人撰写面试总结报告。严格只输出 JSON，不要输出任何额外说明文字。"
+                        + "JSON 字段：overallComment(150-300字 Markdown),"
+                        + "dimensions({PROFESSIONAL:0-100,EXPRESSION:0-100,LOGIC:0-100,PROJECT_DEPTH:0-100,POTENTIAL:0-100}),"
+                        + "highlights(字符串数组,≥2),improvements(字符串数组,≥3),actions(字符串数组,≥3)。");
+        // M3：ReporterAgent 挂载 ActionPlanSkill / JdMatchSkill —— 先跑工具，片段注入 user prompt
+        StringBuilder toolFragments = new StringBuilder();
+        for (AgentSkill skill : reporterSkills()) {
+            if (!skill.supports(AgentId.REPORTER)) {
+                continue;
+            }
+            systemPrompt.append('\n').append(skill.systemFragment());
+            for (AgentTool tool : skill.tools()) {
+                String fragment = tool.execute(agentContext);
+                if (fragment != null && !fragment.isBlank()) {
+                    toolFragments.append(fragment).append('\n');
+                }
+            }
+        }
+        StringBuilder userPrompt = new StringBuilder(String.format(
                 "面试方向：%s；难度：%s；已算好的总分：%s（仅供参考，不要修改）。\n"
                         + "逐题情况（JSON，最多 30 条）：%s\n"
                         + "请基于以上给出五维评分与总结。",
-                directions, difficulty, totalScore.toPlainString(), itemsJson);
+                directions, difficulty, totalScore.toPlainString(), itemsJson));
+        if (toolFragments.length() > 0) {
+            userPrompt.append('\n').append(toolFragments);
+        }
         return AiRequest.builder()
                 .bizType(AiBizType.REPORT)
-                .systemPrompt("你是资深技术面试官，正在为候选人撰写面试总结报告。严格只输出 JSON，不要输出任何额外说明文字。"
-                        + "JSON 字段：overallComment(150-300字 Markdown),"
-                        + "dimensions({PROFESSIONAL:0-100,EXPRESSION:0-100,LOGIC:0-100,PROJECT_DEPTH:0-100,POTENTIAL:0-100}),"
-                        + "highlights(字符串数组,≥2),improvements(字符串数组,≥3),actions(字符串数组,≥3)。")
-                .userPrompt(userPrompt)
+                .agent(AgentId.REPORTER)
+                .systemPrompt(systemPrompt.toString())
+                .userPrompt(userPrompt.toString())
                 .model(aiProperties.modelFor(AiBizType.REPORT))
                 .temperature(0.5)
                 .maxTokens(2000)
                 .jsonMode(true)
                 .build();
+    }
+
+    /**
+     * ReporterAgent 挂载的技能（M3 §9）：行动建议细化 + 岗位匹配。
+     *
+     * @return 技能列表（顺序即 system prompt 片段拼接顺序）
+     */
+    private List<AgentSkill> reporterSkills() {
+        return List.of(jdMatchSkill, actionPlanSkill);
+    }
+
+    /**
+     * 简历摘要兜底：无绑定简历或读取失败（如简历已删除）时返回 null，不阻断报告生成。
+     */
+    private String safeResumeDigest(Long userId, Long resumeId) {
+        if (resumeId == null) {
+            return null;
+        }
+        try {
+            return resumeService.digestForPrompt(userId, resumeId);
+        } catch (Exception e) {
+            log.debug("[Report] 简历摘要读取失败，跳过岗位匹配: {}", e.getMessage());
+            return null;
+        }
     }
 
     private ReportDetailResp toDetail(ReportDO report) {

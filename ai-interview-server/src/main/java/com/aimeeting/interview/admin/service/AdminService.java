@@ -35,8 +35,14 @@ public interface AdminService {
 
     /**
      * AI 调用日志分页（复用 ai 包 AiCallLogService，只读）。
+     *
+     * @param q       分页参数
+     * @param bizType 业务类型过滤（可空）
+     * @param agentId 业务 Agent 维度过滤（M3，可空）
+     * @param success 是否成功过滤（可空）
+     * @return 分页结果
      */
-    PageInfo<AiCallLogResp> aiCalls(PageQuery q, String bizType, Boolean success);
+    PageInfo<AiCallLogResp> aiCalls(PageQuery q, String bizType, String agentId, Boolean success);
 
     /**
      * AI 服务健康状态（provider / model / mock / 熔断 / 舱壁）。

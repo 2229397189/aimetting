@@ -1,6 +1,7 @@
 package com.aimeeting.interview.ai.guard;
 
 import com.aimeeting.interview.config.AiProperties;
+import com.aimeeting.interview.ai.agent.AgentId;
 import com.aimeeting.interview.ai.log.AiCallLogDO;
 import com.aimeeting.interview.ai.log.AiCallLogService;
 import com.aimeeting.interview.ai.model.AiErrorType;
@@ -450,6 +451,7 @@ public class AiGuardService {
         AiCallLogDO logDo = new AiCallLogDO();
         logDo.setUserId(userId);
         logDo.setBizType(stage.bizType.name());
+        logDo.setAgentId(resolveAgent(req, stage));
         logDo.setProvider(provider.name());
         logDo.setModel(req.getModel());
         logDo.setRequestDigest(req.getUserPrompt());
@@ -463,6 +465,17 @@ public class AiGuardService {
         logDo.setRequestId(req.getRequestId());
         logDo.setCreateTime(java.time.LocalDateTime.now());
         return logDo;
+    }
+
+    /**
+     * 解析本条调用归属的业务 Agent（M3 可观测）：优先取请求显式声明，未声明时按 bizType 兜底推导。
+     */
+    private static String resolveAgent(AiRequest req, AiStage stage) {
+        if (req != null && req.getAgent() != null) {
+            return req.getAgent().name();
+        }
+        AgentId byBizType = AgentId.ofBizType(stage.bizType);
+        return byBizType == null ? null : byBizType.name();
     }
 
     private static int nullSafe(Integer value) {

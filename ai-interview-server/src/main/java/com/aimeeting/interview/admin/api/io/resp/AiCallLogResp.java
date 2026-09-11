@@ -18,6 +18,9 @@ public class AiCallLogResp implements Serializable {
 
     private String bizType;
 
+    /** 业务 Agent 维度（M3，可为 null 表示未知）。 */
+    private String agentId;
+
     private String provider;
 
     private String model;

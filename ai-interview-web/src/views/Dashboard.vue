@@ -3,7 +3,7 @@
     <!-- 欢迎卡片 -->
     <section class="welcome card">
       <div class="welcome__main">
-        <h2 class="welcome__title">
+        <h2 class="welcome__title grad-text">
           {{ greeting }}，{{ userStore.displayName }}
           <el-tag v-if="userStore.isAdmin" type="warning" size="small" effect="light">管理员</el-tag>
         </h2>
@@ -42,9 +42,9 @@
       </div>
     </section>
 
-    <!-- 快捷入口 -->
-    <section class="grid-responsive mt-16">
-      <div v-for="item in quickEntries" :key="item.path" class="quick-card" @click="go(item.path)">
+    <!-- 快捷入口（Bento 网格） -->
+    <section class="bento mt-16">
+      <div v-for="item in quickEntries" :key="item.path" class="quick-card hover-lift" @click="go(item.path)">
         <div class="quick-card__icon" :style="{ background: item.bg }">
           <el-icon :size="22" :color="item.color"><component :is="item.icon" /></el-icon>
         </div>
@@ -305,8 +305,9 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   gap: 24px;
-  background: linear-gradient(120deg, #ffffff 0%, #f8f9ff 100%);
-  border: 1px solid #e8eaff;
+  background: var(--grad-brand-soft);
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow-md), var(--shadow-inset);
 }
 
 .welcome__main {
@@ -320,6 +321,10 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+.welcome__title.grad-text {
+  font-weight: 700;
 }
 
 .welcome__desc {
@@ -364,7 +369,7 @@ onMounted(() => {
   color: var(--text-secondary);
 }
 
-/* 快捷入口卡片 */
+/* 快捷入口卡片（悬停微交互由全局 .hover-lift token 提供） */
 .quick-card {
   display: flex;
   align-items: center;
@@ -374,13 +379,6 @@ onMounted(() => {
   border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
   cursor: pointer;
-  transition: all 0.18s ease;
-}
-
-.quick-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
-  border-color: #dfe3ff;
 }
 
 .quick-card__icon {

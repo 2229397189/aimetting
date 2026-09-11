@@ -179,7 +179,7 @@ html.dark {
 }
 
 html.dark body {
-  background: var(--bg-page);
+  background: var(--grad-page);
   color: var(--text-primary);
 }
 
@@ -238,7 +238,7 @@ body {
   height: 100%;
   font-size: 14px;
   color: var(--text-primary);
-  background: var(--bg-page);
+  background: var(--grad-page);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }

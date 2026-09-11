@@ -78,9 +78,10 @@ public class AdminController {
     public Result<PageInfo<AiCallLogResp>> aiCalls(@CurrentUser UserContext user,
                                                  PageQuery q,
                                                  @RequestParam(value = "bizType", required = false) String bizType,
+                                                 @RequestParam(value = "agentId", required = false) String agentId,
                                                  @RequestParam(value = "success", required = false) Boolean success) {
         requireAdmin(user);
-        return Results.success(adminService.aiCalls(q, bizType, success));
+        return Results.success(adminService.aiCalls(q, bizType, agentId, success));
     }
 
     @GetMapping("/ai/health")

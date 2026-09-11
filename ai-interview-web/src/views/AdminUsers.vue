@@ -1,5 +1,6 @@
 <template>
   <div class="page-container admin-users">
+    <BackBar to="/admin/dashboard" label="返回管理后台" />
     <section class="card">
       <div class="card-header">
         <div class="card-title">用户管理</div>
@@ -80,6 +81,7 @@ import { onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Refresh, Search } from '@element-plus/icons-vue'
 import { adminApi } from '@/api/admin'
+import BackBar from '@/components/BackBar/index.vue'
 import type { AdminUserResp } from '@/types'
 import { formatTime } from '@/utils/format'
 

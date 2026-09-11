@@ -54,3 +54,5 @@ ai-interview-server/src/main/resources/static/
 ai-interview-web/dist/
 ai-interview-web/dist_old_*/
 ai-interview-server/*.txt
+
+ai-interview-web/dist-tmp/

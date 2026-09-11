@@ -17,6 +17,8 @@ public class AiCallLogDO {
     private Long id;
     private Long userId;
     private String bizType;
+    /** 业务 Agent 维度（M3）：INTERVIEWER|EVALUATOR|FOLLOW_UP|RESUME_ANALYST|REPORTER。 */
+    private String agentId;
     private String provider;
     private String model;
     private String requestDigest;

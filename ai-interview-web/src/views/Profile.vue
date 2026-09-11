@@ -1,5 +1,6 @@
 <template>
   <div class="page-container profile-page">
+    <BackBar to="/" label="返回首页" />
     <!-- 我的统计 -->
     <section class="card">
       <div class="card-header">
@@ -114,6 +115,7 @@ import { useUserStore } from '@/stores/user'
 import type { UpdateProfileReq, UserProfile, UserStats } from '@/types'
 import { formatScore } from '@/utils/format'
 import { useChartTheme } from '@/composables/useChartTheme'
+import BackBar from '@/components/BackBar/index.vue'
 
 const userStore = useUserStore()
 

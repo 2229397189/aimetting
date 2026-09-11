@@ -22,7 +22,8 @@ public interface ReportReadMapper {
     @Select("SELECT * FROM t_session_answer WHERE deleted = 0 AND session_id = #{sessionId} ORDER BY id ASC")
     List<SessionAnswerReadDO> listAnswers(@Param("sessionId") Long sessionId);
 
-    @Select("SELECT id, session_no AS sessionNo, directions, difficulty, user_id AS userId "
+    @Select("SELECT id, session_no AS sessionNo, directions, difficulty, user_id AS userId, "
+            + "jd_text AS jdText, resume_id AS resumeId "
             + "FROM t_interview_session WHERE deleted = 0 AND id = #{sessionId}")
     SessionMetaReadDO selectSessionMeta(@Param("sessionId") Long sessionId);
 }

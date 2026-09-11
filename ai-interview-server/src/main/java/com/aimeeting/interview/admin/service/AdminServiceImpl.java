@@ -143,9 +143,9 @@ public class AdminServiceImpl implements AdminService {
     }
 
     @Override
-    public PageInfo<AiCallLogResp> aiCalls(PageQuery q, String bizType, Boolean success) {
+    public PageInfo<AiCallLogResp> aiCalls(PageQuery q, String bizType, String agentId, Boolean success) {
         com.baomidou.mybatisplus.core.metadata.IPage<com.aimeeting.interview.ai.log.AiCallLogDO> ipage =
-                aiCallLogService.page(q.safePageNum(), q.safePageSize(), bizType, success);
+                aiCallLogService.page(q.safePageNum(), q.safePageSize(), bizType, agentId, success);
         return PageInfo.of(ipage, this::toCallLogResp);
     }
 
@@ -186,6 +186,7 @@ public class AdminServiceImpl implements AdminService {
         resp.setId(log.getId());
         resp.setUserId(log.getUserId());
         resp.setBizType(log.getBizType());
+        resp.setAgentId(log.getAgentId());
         resp.setProvider(log.getProvider());
         resp.setModel(log.getModel());
         resp.setRequestDigest(log.getRequestDigest());

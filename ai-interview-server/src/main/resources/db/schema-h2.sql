@@ -170,6 +170,7 @@ CREATE TABLE IF NOT EXISTS t_ai_call_log (
   id               BIGINT AUTO_INCREMENT PRIMARY KEY,
   user_id          BIGINT       DEFAULT NULL,
   biz_type         VARCHAR(32)  NOT NULL,
+  agent_id         VARCHAR(32)  DEFAULT NULL,
   provider         VARCHAR(32)  NOT NULL,
   model            VARCHAR(64)  DEFAULT NULL,
   request_digest   VARCHAR(512) DEFAULT NULL,
@@ -227,3 +228,6 @@ CREATE TABLE IF NOT EXISTS t_dict (
   update_time TIMESTAMP  DEFAULT CURRENT_TIMESTAMP,
   deleted    INT          NOT NULL DEFAULT 0
 );
+
+-- 历史库表增量迁移：仅当列不存在时添加 agent_id（M3 按 Agent 维度可观测；H2 支持 ADD COLUMN IF NOT EXISTS）
+ALTER TABLE t_ai_call_log ADD COLUMN IF NOT EXISTS agent_id VARCHAR(32) DEFAULT NULL;
