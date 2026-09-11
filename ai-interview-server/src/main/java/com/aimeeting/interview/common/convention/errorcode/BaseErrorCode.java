@@ -35,7 +35,7 @@ public enum BaseErrorCode implements IErrorCode {
     FORBIDDEN("A0301", "无权限访问该资源"),
 
     NOT_RESUME_TEXT("A0401", "内容看起来不是简历，请检查后重试"),
-    FILE_TYPE_UNSUPPORTED("A0402", "仅支持 TXT / MD / PDF 文件"),
+    FILE_TYPE_UNSUPPORTED("A0402", "仅支持 TXT / MD / DOCX / PDF 文件"),
     FILE_TOO_LARGE("A0403", "文件大小不能超过 5MB"),
     NOT_FOUND("A0404", "请求的接口不存在"),
 
