@@ -42,6 +42,15 @@ class ResumeTextExtractorResilienceTest {
         assertTrue(text.contains("Backend"), "PDF 应抽出关键词");
     }
 
+    @Test
+    @DisplayName("损坏/伪造 PDF 字节：清晰报错而非崩溃或二进制乱码")
+    void corruptPdfThrowsClearError() {
+        byte[] garbage = "GARBAGE_DATA_NOT_A_REAL_PDF_%%%%%%%___random___".getBytes(StandardCharsets.UTF_8);
+        MultipartFile f = new MockMultipartFile("file", "corrupt.pdf", "application/pdf", garbage);
+        ClientException ex = assertThrows(ClientException.class, () -> ResumeTextExtractor.extract(f));
+        assertTrue(ex.getMessage().indexOf('�') < 0, "不应返回二进制乱码：" + ex.getMessage());
+    }
+
     private static byte[] buildBlankPdf() {
         try {
             ByteArrayOutputStream bos = new ByteArrayOutputStream();
