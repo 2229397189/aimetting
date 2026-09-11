@@ -141,6 +141,8 @@ onMounted(() => {
 <style scoped lang="scss">
 .admin-users {
   padding-bottom: 40px;
+  background: var(--grad-page);
+  border-radius: var(--radius-lg);
 }
 
 .search-item {

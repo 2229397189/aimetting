@@ -314,6 +314,8 @@ onBeforeUnmount(() => {
 <style scoped lang="scss">
 .admin-dashboard {
   padding-bottom: 40px;
+  background: var(--grad-page);
+  border-radius: var(--radius-lg);
 }
 
 .overview-grid {

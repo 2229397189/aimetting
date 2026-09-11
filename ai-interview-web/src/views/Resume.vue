@@ -123,7 +123,7 @@
         <div class="parsed-block">
           <div class="parsed-block__title">项目经历</div>
           <ul v-if="parsedProjects.length" class="project-list">
-            <li v-for="(p, i) in parsedProjects" :key="i">
+            <li v-for="(p, i) in parsedProjects" :key="i" class="hover-lift">
               <div class="project-name">{{ p.name || `项目 ${i + 1}` }}</div>
               <div v-if="p.description" class="project-desc">{{ p.description }}</div>
               <div v-if="p.techStack && p.techStack.length" class="tag-wrap">
@@ -420,6 +420,8 @@ onMounted(() => {
 <style scoped lang="scss">
 .resume-page {
   padding-bottom: 40px;
+  background: var(--grad-page);
+  border-radius: var(--radius-lg);
 }
 
 .tip-text {
@@ -447,6 +449,10 @@ onMounted(() => {
   display: flex;
   gap: 24px;
   align-items: flex-start;
+  padding: 16px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  background: var(--grad-brand-soft);
 }
 
 .score-ring {

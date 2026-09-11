@@ -106,6 +106,20 @@
   color: transparent;
 }
 
+/* 主按钮：品牌渐变 + 光晕（全站统一；禁用态 / plain / text / link 保持原样式） */
+.el-button--primary:not(.is-plain):not(.is-text):not(.is-link):not(.is-disabled) {
+  background: var(--grad-brand);
+  border-color: transparent;
+  box-shadow: var(--shadow-glow);
+  transition: filter var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out);
+
+  &:hover,
+  &:focus {
+    filter: brightness(1.06);
+    box-shadow: var(--shadow-xl);
+  }
+}
+
 /* Bento 网格：不对称卡片布局，给首页/仪表盘制造节奏感 */
 .bento {
   display: grid;

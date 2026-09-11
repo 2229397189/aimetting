@@ -870,7 +870,7 @@ onBeforeUnmount(() => {
 <style scoped lang="scss">
 .room {
   min-height: 100vh;
-  background: var(--bg-page);
+  background: var(--grad-page);
   display: flex;
   flex-direction: column;
 }
@@ -879,9 +879,19 @@ onBeforeUnmount(() => {
   position: sticky;
   top: 0;
   z-index: 50;
-  background: #fff;
-  border-bottom: 1px solid var(--border-light);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-bottom: 1px solid var(--glass-border);
   box-shadow: var(--shadow-sm);
+}
+
+/* 题目标题走品牌渐变（纯文本节点，避免影响子元素可见性） */
+.question-title {
+  background: var(--grad-brand);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .room-header__inner {
@@ -1171,7 +1181,10 @@ onBeforeUnmount(() => {
 }
 
 .eval-card {
-  border-color: #e8eaff;
+  background: var(--glass-bg);
+  border-color: var(--glass-border);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
 }
 
 .eval-score {
@@ -1183,7 +1196,10 @@ onBeforeUnmount(() => {
 .eval-score__value {
   font-size: 26px;
   font-weight: 700;
-  color: var(--color-primary);
+  background: var(--grad-brand);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
   font-variant-numeric: tabular-nums;
 }
 

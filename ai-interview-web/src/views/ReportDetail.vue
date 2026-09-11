@@ -470,12 +470,16 @@ onMounted(async () => {
 <style scoped lang="scss">
 .report-detail {
   padding-bottom: 40px;
+  background: var(--grad-page);
+  border-radius: var(--radius-lg);
 }
 
 .head-card {
   display: flex;
   gap: 24px;
   align-items: stretch;
+  background: var(--grad-brand-soft);
+  border-color: var(--glass-border);
 }
 
 .head-left {
