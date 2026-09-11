@@ -1,118 +1,143 @@
 # 部署手册（AI 在线模拟面试平台）
 
-部署目标：腾讯云轻量应用服务器 `81.70.147.211:8080`（OrcaTerm WebShell 管理）。
-产物：`ai-interview-server/target/ai-interview-server-1.0.0.jar`（前端 `dist` 已打进 jar 的 `static/`，无需单独部署前端）。
+> **部署方式 = 一键脚本 `deploy.sh`**，不是裸 `nohup java -jar`。
+> 本文口径全部来自仓库既有脚本：`ai-interview-server/deploy.sh`、`smoke_test.sh`、`verify.sh`。
+>
+> 目标机：腾讯云轻量 `81.70.147.211`（Ubuntu，用户 `ubuntu`）。80 端口被 Nginx 占用 → 本项目跑 **8080**。
+> 该机未配置 scp/ssh 密钥，**上传只能走 OrcaTerm WebShell 的「文件上传」**。
 
 ---
 
-## 1. 服务器前置要求
+## 0. 部署形态（零中间件）
+
+- 运行形态：**H2 文件库 + 真实 DeepSeek 评分**，单机无需 MySQL / Redis / MQ。
+- 前端已由 pom 的 `copy-frontend-dist` 打进 jar，**不需要单独部署前端**。
+- 数据落地在部署目录下的 `./data/aimeeting.mv.db`（H2），重启保留。
+
+---
+
+## 1. 服务器前置
 
 | 项 | 说明 |
 | --- | --- |
-| JDK | 17（运行 `java -jar` 需要；`java -version` 确认） |
-| 防火墙 | 放通 **TCP 8080**（云平台防火墙 + 系统 firewall 都要放行） |
-| 依赖中间件 | **无**。默认 H2 文件库，开箱即用；如需 MySQL 见 §5 |
-| DeepSeek Key | 见 §4，缺省会进入 **Mock 模式**（返回假评分，仅用于演示） |
+| JDK 17 | `sudo apt update && sudo apt install -y openjdk-17-jdk`（`deploy.sh` 会自检 `java`） |
+| 本机 ufw | `deploy.sh` 会自动尝试 `sudo ufw allow 8080/tcp` |
+| **云安全组** | **必须去腾讯云控制台放行入站 TCP 8080**（脚本管不到安全组） |
 
 ---
 
-## 2. 本地构建产物（在你自己机器上）
+## 2. 本地构建产物
 
 ```bash
-# 1) 构建前端产物到 dist（绕过 WorkBuddy 安全删除对 vite 清 dist 的拦截）
-cd ai-interview-web
-npm install
-npm run build -- --outDir dist-tmp
-# 把产物拷贝到后端静态资源目录（pom 的 copy-frontend-dist 读 ../ai-interview-web/dist，二选一）
-mkdir -p ../ai-interview-server/src/main/resources/static
-cp -r dist-tmp/* ../ai-interview-server/src/main/resources/static/
+# 前端（vite 清 dist 会被安全守卫拦，必要时先改名旧 dist）
+cd ai-interview-web && npm run build -- --outDir dist-tmp
 
-# 2) 打包 jar（含后端 + 前端 static）
+# 后端（必须 clean：只改 static 时 `mvn package` 不会重打 jar）
 cd ../ai-interview-server
 "D:\develop\apache-maven-3.9.15\bin\mvn.cmd" -B -Dfile.encoding=UTF-8 clean package
-# 产物：target/ai-interview-server-1.0.0.jar
 ```
 
-> 说明：`mvn package` 中的 `copy-frontend-dist` 阶段会从 `../ai-interview-web/dist` 复制前端；
-> 若你用 `dist-tmp` 命名，请手动复制到 `src/main/resources/static/`（如上），否则 jar 内静态页是旧的。
+产物：`ai-interview-server/target/ai-interview-server-1.0.0.jar`
+> 坑：`mvn clean` 若因本地 java 进程占用 `target/*.jar` 失败，先停本地实例再打包。
 
 ---
 
-## 3. 上传到服务器（OrcaTerm WebShell）
+## 3. 上传（OrcaTerm WebShell）
 
-1. 打开 OrcaTerm，进入 `81.70.147.211` 实例的 WebShell。
-2. 上传 `ai-interview-server-1.0.0.jar` 到 `/opt/aimeeting/`（`/root/aimeeting/` 亦可，自行统一）。
-   - OrcaTerm 支持拖拽上传，或用 WebShell 内 `rz` 命令。
-3. 确认文件大小与本地一致：`ls -lh ai-interview-server-1.0.0.jar`。
+把下面两个文件**放到服务器同一个目录**（例如 `~/ai-interview/`）——OrcaTerm 支持拖拽上传：
+
+1. `ai-interview-server-1.0.0.jar`
+2. `deploy.sh`
+
+（可选，用于上线后验证：`smoke_test.sh`）
+
+> `deploy.sh` 先找**当前目录**的 jar，找不到再找 `target/` —— 所以 jar 与脚本**必须同目录**。
 
 ---
 
-## 4. 配置 DeepSeek Key（关键，否则评分是假的）
-
-应用读取顺序：`环境变量 DEEPSEEK_API_KEY` > `application.yml` 里的 `ai.deepseek.api-key`。
-**推荐用环境变量**，不要把 key 写进仓库。
+## 4. 一键部署
 
 ```bash
-# 在启动命令前注入（生产务必用真实 key）
-export DEEPSEEK_API_KEY="sk-xxxxxxxxxxxxxxxxxxxxxxxx"
+cd ~/ai-interview
+bash deploy.sh
 ```
 
-- 若 key 为空：日志会打印 `使用真实供应商` 的反面（Mock），`AiProperties.isMockMode()==true`，
-  评估/报告接口返回**编造的示例分数**，仅供联调，面试数据不可信。
-- 重建 key：DeepSeek 开放平台 → API Keys → 删除旧 key、新建，取得新 `sk-...` 后更新上面环境变量。
+`deploy.sh` 依次执行：
+
+1. 定位 jar、自检 `java`
+2. 停掉 8080 端口上已有的本应用进程（`ss -ltnp` + `kill`）
+3. 生成 / 读取 `.env.local`（**不进版本库**）：
+   - `AI_INTERVIEW_JWT_SECRET=<openssl 随机 48 字节>`
+   - `AI_INTERVIEW_AI_API_KEY=`（**需你手填**）
+4. `set -a; . .env.local; set +a` 导出环境变量
+   - ⚠️ **空值会被 `unset`**，回落到 jar 内置 key 并打警告；
+     若留成空字符串则会被绑定为 `apiKey=""` → `isMockMode()=true` → **整站静默降级为规则评分**（HTTP 仍 200，看不出来）
+5. 启动：
+
+   ```bash
+   nohup setsid java -jar ai-interview-server-1.0.0.jar \
+     --server.port=8080 \
+     --spring.profiles.active=h2 \
+     --ai-interview.ai.provider=deepseek \
+     --ai-interview.jwt.secret="$JWT_SECRET" > app.log 2>&1 &
+   ```
+
+6. 轮询 `http://localhost:8080/api/health`（最多 30 次 × 2s）
+7. 尝试 `ufw allow 8080/tcp`
 
 ---
 
-## 5. 启动
+## 5. 配置项（**不要再用错变量名**）
 
-### 5.1 零中间件（默认，H2 文件库）
-```bash
-cd /opt/aimeeting
-export DEEPSEEK_API_KEY="sk-xxxxxxxx"
-nohup java -jar ai-interview-server-1.0.0.jar > app.log 2>&1 &
-```
-- 数据落在运行目录的 `./data/aimeeting.mv.db`（H2）。重启保留。
-- 端口 8080，上下文路径 `/`。
+| 用途 | 环境变量 | 绑定位置（application.yml） |
+| --- | --- | --- |
+| DeepSeek Key | **`AI_INTERVIEW_AI_API_KEY`** | `ai-interview.ai.api-key` |
+| JWT 密钥 | **`AI_INTERVIEW_JWT_SECRET`** | `ai-interview.jwt.secret` |
+| LLM base url | `AI_INTERVIEW_AI_BASE_URL`（默认 `https://api.deepseek.com`） | `ai-interview.ai.base-url` |
 
-### 5.2 使用 MySQL（可选）
-```bash
-export DEEPSEEK_API_KEY="sk-xxxxxxxx"
-nohup java -jar ai-interview-server-1.0.0.jar \
-  --spring.profiles.active=mysql \
-  --spring.datasource.url=jdbc:mysql://127.0.0.1:3306/aimeeting \
-  --spring.datasource.username=xxx --spring.datasource.password=xxx > app.log 2>&1 &
-```
-- 表结构见 `src/main/resources/db/schema-mysql.sql`，首次启动由 JPA/H2 初始化策略或手动执行。
+- ⚠️ **不是** `DEEPSEEK_API_KEY`。
+- 填 Key：编辑 `~/ai-interview/.env.local` 的 `AI_INTERVIEW_AI_API_KEY=sk-xxx`，再重跑 `bash deploy.sh`。
+- ⚠️ 仓库 `application.yml` 里带内置 DeepSeek key（已进 git、**已泄露**）→ 生产必须用 `.env.local` 覆盖并轮换。
+- ⚠️ JWT 必须由 `.env.local` 注入：早期 `deploy.sh` 传错配置键，随机密钥从未生效，线上一直用 yml 默认公开密钥（可伪造任意用户 token）——现已修正，请确认升级到当前脚本。
 
 ---
 
-## 6. 健康检查与验证
+## 6. 访问与初始账号
 
-```bash
-# 进程
-ps aux | grep ai-interview-server | grep -v grep
-
-# 端口
-ss -lntp | grep 8080
-
-# 接口冒烟（返回 HTML 即前端已打进 jar）
-curl -s -o /dev/null -w "%{http_code}\n" http://localhost:8080/
-
-# 注册冒烟
-curl -s -X POST http://localhost:8080/api/auth/register \
-  -H 'Content-Type: application/json' \
-  -d '{"username":"demo","password":"Demo1234","email":"demo@test.com"}'
-```
-
-日志排错：`tail -f app.log`。关注 `AiProviderFactory` 行确认是 `deepseek` 还是 `mock`。
+- 首页：`http://81.70.147.211:8080/`
+- 健康：`http://81.70.147.211:8080/api/health`
+- 接口文档：`http://81.70.147.211:8080/swagger-ui.html`
+- 初始账号：`admin / admin123`（管理员）、`demo / demo1234`（演示用户）
 
 ---
 
-## 7. 更新发布流程（日常）
+## 7. 上线验证（推荐）
 
-1. 本地按 §2 重新 `mvn clean package`。
-2. 上传新 jar 覆盖 `/opt/aimeeting/` 旧文件。
-3. `kill <旧pid>` 然后重新 `nohup java -jar ... &`。
-4. 按 §6 做健康检查。
+```bash
+cd ~/ai-interview
+bash smoke_test.sh        # 48 项全功能冒烟（真实 DeepSeek 评分），需服务已启动
+```
 
-> 提示：H2 文件库在 jar 运行时被占用，更新前请先停进程再覆盖 jar，避免锁文件损坏。
+- 只看 HTTP 200 **不够**：用管理员 token 调 `/api/admin/ai/health`，确认 `available:true`；
+  若 `mockMode:true` → Key 没生效，评分是规则兜底。
+- 前端是否最新：`curl -s localhost:8080/ | grep -oE 'assets/index-[A-Za-z0-9_-]+\.js'`
+  与本地 `ai-interview-web/dist/assets/index-*.js` 的 hash 比对。
+
+---
+
+## 8. 更新发布
+
+本地 `clean package` → 重新上传覆盖 jar → `bash deploy.sh`（自动停旧进程、健康检查）。
+
+---
+
+## 9. 排错
+
+| 现象 | 处置 |
+| --- | --- |
+| 起不来 / 超时 | `tail -n 50 ~/ai-interview/app.log` |
+| 评分是假的（HTTP 200 但没真评分） | 查 `/api/admin/ai/health` 的 `mockMode`；日志里 `AiProviderFactory` 输出 |
+| 页面还是旧的 | 比对前端 hash；确认打包用了 **clean package** |
+| 外网打不开 | 安全组放行 TCP 8080 + `ufw allow 8080/tcp` |
+
+> 备注：该机器免费期至 **2026-10-08**，到期前需迁移或续费。
