@@ -3,7 +3,7 @@
     <BackBar to="/admin/dashboard" label="返回管理后台" />
     <section class="card">
       <div class="card-header">
-        <div class="card-title">用户管理</div>
+        <div class="card-title grad-text">用户管理</div>
         <div class="flex gap-8">
           <el-input
             v-model="keyword"

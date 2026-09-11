@@ -72,10 +72,6 @@ CREATE TABLE IF NOT EXISTS t_question (
 --   M4     状态流水：   t_session_event
 --   M5     简历：       t_resume
 --   M6     报告：       t_interview_report
--- ----------------------------------------------------------------------------
--- 0. 历史库表增量迁移（幂等，仅当列不存在时添加）
-ALTER TABLE t_session_answer ADD COLUMN IF NOT EXISTS follow_up_question VARCHAR(2000) DEFAULT NULL;
-ALTER TABLE t_session_answer ADD COLUMN IF NOT EXISTS authenticity INT DEFAULT NULL COMMENT '简历经历真实性/参与度判断 0-100';
 -- ============================================================================
 
 
@@ -229,5 +225,12 @@ CREATE TABLE IF NOT EXISTS t_dict (
   deleted    INT          NOT NULL DEFAULT 0
 );
 
--- 历史库表增量迁移：仅当列不存在时添加 agent_id（M3 按 Agent 维度可观测；H2 支持 ADD COLUMN IF NOT EXISTS）
+
+-- ============================================================================
+-- 历史库表增量迁移（幂等，仅当列不存在时添加）
+-- 必须放在所有 CREATE TABLE 之后：全新库已由上面的 CREATE 自带这些列，
+-- 存量库则通过 IF NOT EXISTS 补齐，避免「ALTER 早于建表」导致建表脚本失败。
+-- ============================================================================
+ALTER TABLE t_session_answer ADD COLUMN IF NOT EXISTS follow_up_question VARCHAR(2000) DEFAULT NULL;
+ALTER TABLE t_session_answer ADD COLUMN IF NOT EXISTS authenticity INT DEFAULT NULL COMMENT '简历经历真实性/参与度判断 0-100';
 ALTER TABLE t_ai_call_log ADD COLUMN IF NOT EXISTS agent_id VARCHAR(32) DEFAULT NULL;

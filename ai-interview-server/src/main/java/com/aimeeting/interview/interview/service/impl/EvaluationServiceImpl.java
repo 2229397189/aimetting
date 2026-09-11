@@ -1,6 +1,9 @@
 package com.aimeeting.interview.interview.service.impl;
 
-import com.aimeeting.interview.config.AiProperties;
+import com.aimeeting.interview.ai.agent.AgentContext;
+import com.aimeeting.interview.ai.agent.AgentId;
+import com.aimeeting.interview.ai.agent.InterviewAgent;
+import com.aimeeting.interview.ai.agent.skill.SkillRegistry;
 import com.aimeeting.interview.ai.fallback.RuleEvaluator;
 import com.aimeeting.interview.ai.guard.AiGuardService;
 import com.aimeeting.interview.ai.model.AiBizType;
@@ -11,6 +14,7 @@ import com.aimeeting.interview.ai.model.AiTextResult;
 import com.aimeeting.interview.ai.parser.AiJsonParser;
 import com.aimeeting.interview.ai.parser.AiOutputValidator;
 import com.aimeeting.interview.common.util.Md5Util;
+import com.aimeeting.interview.config.AiProperties;
 import com.aimeeting.interview.interview.domain.model.EvaluatedBy;
 import com.aimeeting.interview.interview.prompt.InterviewPrompts;
 import com.aimeeting.interview.interview.service.AiStreamSink;
@@ -23,8 +27,8 @@ import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 /**
@@ -39,8 +43,7 @@ import org.springframework.stereotype.Service;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
-public class EvaluationServiceImpl implements EvaluationService {
+public class EvaluationServiceImpl implements EvaluationService, InterviewAgent<EvaluationContext, EvaluationResult> {
 
     /** 改进答案的触发分数（低于 80 分给出改进参考答案）。 */
     private static final int IMPROVE_THRESHOLD = 80;
@@ -49,15 +52,49 @@ public class EvaluationServiceImpl implements EvaluationService {
 
     private final AiProperties aiProperties;
 
+    /** 可选：为 Evaluator 追加评分锚点等技能片段；无技能注册时为 null。 */
+    private final SkillRegistry skillRegistry;
+
+    @Autowired(required = false)
+    public EvaluationServiceImpl(AiGuardService aiGuardService, AiProperties aiProperties, SkillRegistry skillRegistry) {
+        this.aiGuardService = aiGuardService;
+        this.aiProperties = aiProperties;
+        this.skillRegistry = skillRegistry;
+    }
+
+    @Override
+    public AgentId id() {
+        return AgentId.EVALUATOR;
+    }
+
+    @Override
+    public AiBizType bizType() {
+        return AiBizType.EVALUATE;
+    }
+
+    @Override
+    public AiStage stage() {
+        return AiStage.EVALUATION;
+    }
+
+    /**
+     * Agent 契约入口：从 {@link AgentContext} 取 userId，委托既有 {@link #evaluate} 逻辑（无递归）。
+     */
+    @Override
+    public EvaluationResult run(AgentContext ctx, EvaluationContext input) {
+        return evaluate(ctx == null ? null : ctx.getUserId(), input, null);
+    }
+
     @Override
     public EvaluationResult evaluate(Long userId, EvaluationContext ctx, AiStreamSink sink) {
         final String resumeDigest = ctx.getResumeDigest();
         AiRequest request = AiRequest.builder()
                 .bizType(AiBizType.EVALUATE)
-                .systemPrompt(InterviewPrompts.evaluateSystem())
+                .systemPrompt(InterviewPrompts.evaluateSystem()
+                        + (skillRegistry != null ? "\n" + skillRegistry.assembleSystem(AgentId.EVALUATOR) : ""))
                 .userPrompt(InterviewPrompts.evaluateUser(ctx.getQuestionTitle(), ctx.getReferencePoints(),
                         ctx.getAnswer(), ctx.isFollowUp(), resumeDigest))
-                .temperature(aiProperties.getTemperature())
+                .temperature(aiProperties.temperatureFor(AiBizType.EVALUATE))
                 .maxTokens(aiProperties.getMaxTokens())
                 .model(aiProperties.modelFor(AiBizType.EVALUATE))
                 .jsonMode(true)
@@ -141,6 +178,7 @@ public class EvaluationServiceImpl implements EvaluationService {
         List<String> highlights = toStringArray(node, "highlights");
         List<String> gaps = toStringArray(node, "gaps");
         boolean needFollowUp = node.path("needFollowUp").asBoolean(false);
+        // followUpQuestion 字段仍解析，但生成已解耦到 FollowUpAgent，此处不再填充（保持 schema 不变）
         String followUpQuestion = node.path("followUpQuestion").asText("");
         String improvedAnswer = node.path("improvedAnswer").asText("");
         if (improvedAnswer.isBlank() && score < IMPROVE_THRESHOLD) {
@@ -164,8 +202,8 @@ public class EvaluationServiceImpl implements EvaluationService {
                 .comment(comment)
                 .highlights(highlights)
                 .gaps(gaps)
-                .needFollowUp(needFollowUp && followUpQuestion != null && !followUpQuestion.isBlank())
-                .followUpQuestion(followUpQuestion)
+                .needFollowUp(needFollowUp)
+                .followUpQuestion(null)
                 .improvedAnswer(improvedAnswer)
                 .authenticity(authenticity)
                 .evaluatedBy(EvaluatedBy.AI)
@@ -187,9 +225,8 @@ public class EvaluationServiceImpl implements EvaluationService {
                 .comment(ruleScore.comment)
                 .highlights(ruleScore.highlights)
                 .gaps(ruleScore.gaps)
-                .needFollowUp(ruleScore.needFollowUp
-                        && ruleScore.followUpQuestion != null && !ruleScore.followUpQuestion.isBlank())
-                .followUpQuestion(ruleScore.followUpQuestion)
+                .needFollowUp(ruleScore.needFollowUp)
+                .followUpQuestion(null)
                 .improvedAnswer(improvedAnswer)
                 .authenticity(RuleEvaluator.fallbackAuthenticity(ctx.getAnswer(), ctx.getResumeDigest()))
                 .evaluatedBy(EvaluatedBy.RULE)

@@ -1,8 +1,9 @@
 <template>
   <div class="page-container session-list">
+    <BackBar to="/" label="返回首页" />
     <section class="card">
       <div class="card-header">
-        <div class="card-title">面试记录</div>
+        <div class="card-title grad-text">面试记录</div>
         <el-button type="primary" @click="goSetup">
           <el-icon><VideoPlay /></el-icon>开始新面试
         </el-button>
@@ -149,6 +150,7 @@ import { formatScore, formatTime } from '@/utils/format'
 import StatusBadge from '@/components/StatusBadge/index.vue'
 import PageLoading from '@/components/PageLoading/index.vue'
 import EmptyState from '@/components/EmptyState/index.vue'
+import BackBar from '@/components/BackBar/index.vue'
 
 const router = useRouter()
 

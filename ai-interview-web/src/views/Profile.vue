@@ -9,23 +9,23 @@
       </div>
 
       <div class="stat-grid">
-        <div class="stat-card">
+        <div class="stat-card hover-lift">
           <div class="stat-card__value">{{ stats.totalSessions }}</div>
           <div class="stat-card__label">总场次</div>
         </div>
-        <div class="stat-card">
+        <div class="stat-card hover-lift">
           <div class="stat-card__value">{{ stats.completedSessions }}</div>
           <div class="stat-card__label">完成场次</div>
         </div>
-        <div class="stat-card">
+        <div class="stat-card hover-lift">
           <div class="stat-card__value">{{ formatScore(stats.averageScore) }}</div>
           <div class="stat-card__label">平均分</div>
         </div>
-        <div class="stat-card">
+        <div class="stat-card hover-lift">
           <div class="stat-card__value">{{ stats.totalQuestions }}</div>
           <div class="stat-card__label">总题数</div>
         </div>
-        <div class="stat-card">
+        <div class="stat-card hover-lift">
           <div class="stat-card__value">{{ stats.resumeCount }}</div>
           <div class="stat-card__label">简历数</div>
         </div>
@@ -342,7 +342,7 @@ onBeforeUnmount(() => {
 }
 
 .stat-card {
-  background: linear-gradient(120deg, #ffffff 0%, #f8f9ff 100%);
+  background: var(--grad-brand-soft);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
   padding: 16px 12px;

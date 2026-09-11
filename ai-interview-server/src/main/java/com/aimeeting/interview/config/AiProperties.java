@@ -91,12 +91,62 @@ public class AiProperties {
     private double consistencySampleRate = 0.0;
 
     /**
-     * 是否 mock 模式：provider 显式为 mock 或 apiKey 为空（BR-14）。
+     * 是否 mock 模式：provider 显式为 mock，或解析后的 apiKey 为空/为占位符（BR-14）。
+     * 解析后的 key 来自环境变量 {@code DEEPSEEK_API_KEY}，缺失时回退到 yaml 的 apiKey。
      *
      * @return mock 模式返回 true
      */
     public boolean isMockMode() {
-        return "mock".equalsIgnoreCase(provider) || apiKey == null || apiKey.isBlank();
+        String key = resolvedApiKey();
+        // 非空「且」不是占位符（如 yaml 默认值 "sk-..."）才视为非 mock
+        boolean hasRealKey = key != null && !key.isBlank() && !isPlaceholderKey(key);
+        return "mock".equalsIgnoreCase(provider) || !hasRealKey;
+    }
+
+    /**
+     * 判断是否为未真正填写的占位符 key（如 {@code "sk-..."}）。
+     *
+     * @param key 解析出的 apiKey
+     * @return 占位符返回 true
+     */
+    private static boolean isPlaceholderKey(String key) {
+        return key.trim().equals("sk-...");
+    }
+
+    /**
+     * 取业务场景使用的采样温度（M1 多智能体参数化）。
+     *
+     * @param bizType 业务类型
+     * @return 温度值
+     */
+    public double temperatureFor(AiBizType bizType) {
+        if (bizType == null) {
+            return 0.5;
+        }
+        return switch (bizType) {
+            case EVALUATE -> 0.2;
+            case FOLLOW_UP -> 0.5;
+            case QUESTION -> 0.7;
+            case RESUME -> 0.3;
+            case REPORT -> 0.5;
+            default -> 0.5;
+        };
+    }
+
+    /**
+     * 解析最终使用的 API Key：环境变量 {@code DEEPSEEK_API_KEY} 优先于 yaml 配置（便于部署覆盖）。
+     *
+     * @return 实际使用的 apiKey
+     */
+    public String resolvedApiKey() {
+        String env = System.getenv("DEEPSEEK_API_KEY");
+        if (env != null) {
+            env = env.trim();
+            if (!env.isEmpty()) {
+                return env;
+            }
+        }
+        return apiKey;
     }
 
     /**

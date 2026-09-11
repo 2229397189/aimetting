@@ -1,8 +1,9 @@
 <template>
   <div class="page-container report-list">
+    <BackBar to="/" label="返回首页" />
     <section class="card">
       <div class="card-header">
-        <div class="card-title">面试报告历史</div>
+        <div class="card-title grad-text">面试报告历史</div>
         <el-button :icon="Refresh" @click="loadList">刷新</el-button>
       </div>
 
@@ -89,6 +90,7 @@ import { directionLabel, difficultyLabel, difficultyTagType } from '@/utils/dict
 import { formatScore, formatTime } from '@/utils/format'
 import PageLoading from '@/components/PageLoading/index.vue'
 import EmptyState from '@/components/EmptyState/index.vue'
+import BackBar from '@/components/BackBar/index.vue'
 
 const router = useRouter()
 

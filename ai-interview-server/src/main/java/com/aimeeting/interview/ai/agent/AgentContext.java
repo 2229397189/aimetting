@@ -6,12 +6,15 @@ import lombok.Builder;
 import lombok.Getter;
 
 /**
- * Agent 运行上下文：跨 Agent 共享、由编排器（{@code InterviewWorkflowEngine}）注入。
+ * Agent 运行上下文：跨 Agent 共享、由编排器（{@code InterviewWorkflowEngine}）注入的不可变上下文。
  *
- * <p>字段对齐 {@code MULTI_AGENT_DESIGN.md} §3.2 的最小可用子集：M3 阶段先以
- * {@code resumeDigest}（简历摘要文本）、{@code jdText}（懒加载 JD）、{@code history}
- * （题/答/评轮次摘要）承载上下文；待 M1 落地强类型 {@code ResumeProfile} / {@code ChatTurn}
- * 后替换为强类型字段，本类的 builder 契约保持不变。
+ * <p>字段为各 Agent 需要的最小可用并集：
+ * <ul>
+ *   <li>{@code resumeDigest} / {@code jdText} / {@code history}：服务于出题 / 评分 / 工作流编排；</li>
+ *   <li>{@code referencePoints} / {@code originalAnswer} / {@code followUpCount} / {@code maxFollowUp}：
+ *       服务于追问 Agent。</li>
+ * </ul>
+ * 后续 Agent 按需扩展，不破坏既有字段。
  */
 @Getter
 @Builder
@@ -28,6 +31,18 @@ public class AgentContext {
 
     /** 候选人简历摘要（ResumeAnalystAgent 产物，可为 null）。 */
     private final String resumeDigest;
+
+    /** 题目的考察要点（追问 Agent 使用，可空）。 */
+    private final List<String> referencePoints;
+
+    /** 候选人原始回答（追问 Agent 使用，可空）。 */
+    private final String originalAnswer;
+
+    /** 当前已追问次数（追问 Agent 使用）。 */
+    private final int followUpCount;
+
+    /** 单题最大追问次数（追问 Agent 使用）。 */
+    private final int maxFollowUp;
 
     /**
      * 目标岗位 JD（懒加载，避免每次拼装 prompt 都查库）。

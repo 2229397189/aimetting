@@ -1,9 +1,9 @@
 <template>
   <div class="page-container replay">
+    <BackBar to="/interview" label="返回会话列表" />
     <section class="card">
       <div class="replay-header">
-        <el-button text :icon="ArrowLeft" @click="goBack">返回列表</el-button>
-        <h2 class="replay-title">面试回放</h2>
+        <h2 class="replay-title grad-text">面试回放</h2>
       </div>
 
       <!-- 加载态 -->
@@ -141,12 +141,12 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ArrowLeft } from '@element-plus/icons-vue'
 import { interviewApi } from '@/api/interview'
 import type { Difficulty, Direction, SessionDetail } from '@/types'
 import { directionLabel, difficultyLabel, difficultyTagType } from '@/utils/dict'
 import { formatScore, formatTime } from '@/utils/format'
 import EmptyState from '@/components/EmptyState/index.vue'
+import BackBar from '@/components/BackBar/index.vue'
 
 /**
  * messages 接口为扁平流水，后端可能额外返回点评细分字段。
@@ -298,13 +298,17 @@ onMounted(() => {
   color: var(--text-primary);
 }
 
+.replay-title.grad-text {
+  color: transparent;
+}
+
 .meta-bar {
   display: flex;
   flex-wrap: wrap;
   gap: 24px;
   padding: 16px;
   margin-bottom: 20px;
-  background: var(--bg-secondary, #f7f8fa);
+  background: var(--bg-hover);
   border-radius: 8px;
 }
 
@@ -374,8 +378,8 @@ onMounted(() => {
 }
 
 .q-content.improve {
-  background: rgba(64, 158, 255, 0.06);
-  border-left: 3px solid var(--el-color-primary);
+  background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+  border-left: 3px solid var(--color-primary);
   padding: 8px 12px;
   border-radius: 4px;
 }

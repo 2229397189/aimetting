@@ -30,7 +30,7 @@ public class AiProviderFactory {
     @Bean
     public AiProvider aiProvider() {
         boolean useMock = "mock".equalsIgnoreCase(props.getProvider())
-                || props.getApiKey() == null || props.getApiKey().isBlank();
+                || props.resolvedApiKey() == null || props.resolvedApiKey().isBlank();
         if (useMock) {
             log.warn("[AiProviderFactory] 使用 Mock 供应商（provider={} / apiKey 缺失），AI 结果由规则引擎生成",
                     props.getProvider());
@@ -42,13 +42,13 @@ public class AiProviderFactory {
                 .readTimeout(props.getReportTimeoutSeconds(), TimeUnit.SECONDS)
                 .build();
         log.info("[AiProviderFactory] 使用真实供应商 deepseek，baseUrl={}", props.getBaseUrl());
-        return new OpenAiCompatProvider(props.getBaseUrl(), props.getApiKey(), client,
+        return new OpenAiCompatProvider(props.getBaseUrl(), props.resolvedApiKey(), client,
                 objectMapper, props.getModel());
     }
 
     public boolean isMockMode() {
         return "mock".equalsIgnoreCase(props.getProvider())
-                || props.getApiKey() == null || props.getApiKey().isBlank();
+                || props.resolvedApiKey() == null || props.resolvedApiKey().isBlank();
     }
 
     public String currentModel(AiBizType type) {

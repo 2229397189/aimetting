@@ -1,6 +1,7 @@
 <template>
   <div class="not-found">
     <div class="not-found__inner">
+      <BackBar to="/" label="返回首页" />
       <div class="not-found__code">404</div>
       <h1 class="not-found__title">页面走丢了</h1>
       <p class="not-found__desc">你访问的页面不存在或已被移动，请返回首页继续。</p>
@@ -18,6 +19,7 @@
 
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
+import BackBar from '@/components/BackBar/index.vue'
 
 const router = useRouter()
 
