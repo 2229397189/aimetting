@@ -123,13 +123,23 @@ public final class ResumeTextExtractor {
 
     /**
      * 抽取 PDF 文本：优先 PDFBox，失败或空则回退启发式。
+     *
+     * <p>若 PDFBox 与启发式都抽不到任何可读文本（扫描件 / 图片型 PDF 的常见情况），
+     * 直接抛出清晰错误，避免把二进制噪声回传给上层被误判为「不是简历」。</p>
      */
     private static String extractPdf(byte[] bytes) {
         String real = pdfBoxExtract(bytes);
         if (real != null && !real.isBlank()) {
             return real;
         }
-        return extractPdfHeuristic(bytes);
+        String heuristic = extractPdfHeuristic(bytes);
+        if (heuristic != null && !heuristic.isBlank()) {
+            return heuristic;
+        }
+        throw new ClientException(
+                "PDF 中未检测到可提取的文本，可能是扫描件或图片型 PDF。"
+                        + "请上传包含可选中文字的 PDF，或改用 TXT / MD / DOCX 格式",
+                BaseErrorCode.NOT_RESUME_TEXT);
     }
 
     private static String pdfBoxExtract(byte[] bytes) {
@@ -161,13 +171,7 @@ public final class ResumeTextExtractor {
                 sb.append(token).append(' ');
             }
         }
-        String result = sb.toString().trim();
-        if (result.isEmpty()) {
-            // 兜底：去掉控制字符直接返回可读片段
-            result = raw.replaceAll("[^\\p{Print}\\p{InCJKUnifiedIdeographs}\\s]", " ")
-                    .replaceAll("\\s+", " ").trim();
-        }
-        return result;
+        return sb.toString().trim();
     }
 
     private static String unescape(String token) {
